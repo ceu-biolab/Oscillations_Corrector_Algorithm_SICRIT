@@ -27,6 +27,7 @@ cd SICRIT_Oscillations_corrector_algorithm
 conda env create -f conda_env.yml
 conda activate oscilations_env
 
+---
 ## Execution- CLI usage
 
 sicritfix --input path/to/input_file.mzML --output path/to/output_folder/
