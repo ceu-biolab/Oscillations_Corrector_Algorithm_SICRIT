@@ -1,0 +1,7 @@
+setup.py
+src/sicritfix.egg-info/PKG-INFO
+src/sicritfix.egg-info/SOURCES.txt
+src/sicritfix.egg-info/dependency_links.txt
+src/sicritfix.egg-info/entry_points.txt
+src/sicritfix.egg-info/requires.txt
+src/sicritfix.egg-info/top_level.txt

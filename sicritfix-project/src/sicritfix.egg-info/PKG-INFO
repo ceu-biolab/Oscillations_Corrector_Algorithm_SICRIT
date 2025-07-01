@@ -1,0 +1,9 @@
+Metadata-Version: 2.2
+Name: sicritfix
+Version: 0.1
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: massql
+Requires-Dist: pyopenms
+Requires-Dist: pyteomics
+Dynamic: requires-dist
