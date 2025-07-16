@@ -4,13 +4,22 @@ import subprocess
 
 def convert_mzxml_2_mzml(file_path):
     """
-    Convierte un archivo .mzXML a .mzML usando ProteoWizard (msconvert).
+    Converts a .mzXML file to .mzML format using ProteoWizard's msconvert tool.
 
-    Args:
-        file_path (str): Ruta del archivo mzXML.
+    Parameters
+    ----------
+    file_path : str
+        Path to the input .mzXML file.
 
-    Returns:
-        str: Ruta del nuevo archivo mzML convertido.
+    Returns
+    -------
+    str
+        Path to the newly converted .mzML file.
+
+    Raises
+    ------
+    RuntimeError
+        If msconvert fails or the expected output file is not generated.
     """
     output_folder = os.path.dirname(file_path)
     mzml_file_path = os.path.join(
@@ -26,9 +35,9 @@ def convert_mzxml_2_mzml(file_path):
         if os.path.exists(mzml_file_path):
             return mzml_file_path
         else:
-            raise RuntimeError(f"MsConvert no generó el archivo esperado: {mzml_file_path}")
+            raise RuntimeError(f"MSConvert did not generate the expected file: {mzml_file_path}")
 
     except subprocess.CalledProcessError as e:
-        print(f"Error al ejecutar msconvert: {e}")
-        raise RuntimeError("Falló la conversión con ProteoWizard (msconvert).")
+        print(f"Error while running MSConvert: {e}")
+        raise RuntimeError("Conversion with ProteoWizard (msconvert) failed.")
 
