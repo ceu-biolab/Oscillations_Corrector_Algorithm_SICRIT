@@ -1,56 +1,56 @@
 # processing/processor.py
+#!/usr/bin/env python
+
+"""
+This Python module implements the main pipeline for detecting and correcting 
+oscillatory artifacts in mass spectrometry (MS) data using frequency-domain analysis.
+
+@contents  :  End-to-end correction pipeline for oscillatory m/z signals.
+@project   :  SICRITfix – Oscillation Correction in Mass Spectrometry Data
+@program   :  N/A
+@file      :  processor.py
+@version   :  0.0.1, 18 July 2025
+@author    :  Maite Gómez del Rio Vinuesa (maite.gomezriovinuesa@gmail.com)
+
+@information :
+    https://www.python.org/dev/peps/pep-0020/
+    https://www.python.org/dev/peps/pep-0008/
+    http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html
+
+@dependencies :
+    - pyopenms
+    - numpy
+    - sicritfix.processing.corrector
+    - sicritfix.utils.frequency_analyzer
+
+@functions :
+    - detect_oscillating_mzs
+    - correct_spectra
+    - process_file
+
+@notes :
+    This is the central orchestrator of the SICRITfix correction logic.
+
+@copyright :
+    Copyright 2025 GNU AFFERO GENERAL PUBLIC LICENSE.
+    All rights reserved. Reproduction in whole or in part is prohibited
+    without the written consent of the copyright owner.
+"""
+__author__    = "Maite Gómez del Rio Vinuesa"
+__copyright__ = "GPL License version 3"
+
+
+
 import pyopenms as oms
-import os
 import time
 import numpy as np
 from collections import defaultdict
 
-#from mpl_toolkits.mplot3d import Axes3D
-from sicritfix.processing.corrector import correct_oscillations, build_xic
-from sicritfix.io.io_utils import convert_mzxml_2_mzml
-from sicritfix.utils.fft_utils import local_frequencies_with_fft, apply_polynomial_regression
-from sicritfix.validation.validator import plot_all, export_xic_signals_2_csv, plot_original_and_corrected
+from sicritfix.processing.corrector import correct_oscillations
+from sicritfix.io.io import load_file
+from sicritfix.utils.frequency_analyzer import obtain_freq_from_signal
+#from sicritfix.validation.validator import plot_all, export_xic_signals_2_csv, plot_original_and_corrected
 
-
-def obtain_freq_from_signal(rt_array, mz_array, intensity_array, window_size=70, mz_ref=922.098):
-    """
-    Estimates the local frequency and phase of oscillations from a given reference m/z signal.
-
-    Extracts the XIC at a reference m/z, computes local frequency estimates using a windowed FFT-based approach, 
-    and fits a polynomial regression to obtain a smooth phase signal. The output is used to correct oscillatory 
-    behavior in related signals.
-
-    Parameters
-    ----------
-    rt_array : np.ndarray
-        Retention time values for each scan.
-
-    mz_array : np.ndarray
-        Array of m/z values for each scan.
-
-    intensity_array : np.ndarray
-        Intensity values corresponding to each m/z and retention time.
-
-    window_size : int, optional (default=70)
-        Size of the sliding window (in scans) used for local frequency estimation.
-
-    mz_ref : float, optional (default=922.098)
-        Reference m/z value used to extract the XIC for frequency analysis.
-
-    Returns
-    -------
-    local_freqs_ref : np.ndarray
-        Estimated local frequencies (in Hz) along the retention time.
-
-    phase_ref : np.ndarray
-        Smoothed phase (in radians) derived from polynomial regression on frequency data.
-    """
-    xic=build_xic(mz_array, intensity_array, rt_array, target_mz=mz_ref)
-    sampling_interval = np.mean(np.diff(rt_array))
-    rt_freqs, local_freqs_ref = local_frequencies_with_fft(xic, rt_array, window_size, sampling_interval)
-    phase_ref=apply_polynomial_regression(rt_array, rt_freqs, local_freqs_ref)
-
-    return local_freqs_ref, phase_ref
 
 def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_bin_size=0.01, min_occurrences=10, power_threshold=0.15):
     
@@ -254,33 +254,18 @@ def process_file(file_path, save_as):
    """
     
     start_time=time.time()
-    input_map = oms.MSExperiment()
+    input_map=load_file(file_path)
 
-    file_extension = os.path.splitext(file_path)[1].lower()
-
-    if file_extension == ".mzxml":
-        mzml_file_path = convert_mzxml_2_mzml(file_path)
-        print("Converting to mzML...")
-        time.sleep(3)
-        if not os.path.exists(mzml_file_path):
-            raise RuntimeError("Error: file not found")
-        else:
-            print("Loading mzML file...")
-            oms.MzMLFile().load(mzml_file_path, input_map)
-    else:
-        oms.MzMLFile().load(file_path, input_map)
-
+    
+    # 1. Load MS data from the original file (rts, mzs, and intesity values)
+    
     original_spectra = []
     mz_array = []
     intensity_array=[]
     rts = []#secs
     tic_original = []
-   
-    print("Processing file....")
-    print(">>> Correcting")
     
     
-    # 1. Load MS data from the original file (rts, mzs, and intesity values)
     for spectrum in input_map:
         original_spectra.append(spectrum)
         mzs, intensities = spectrum.get_peaks()
@@ -302,8 +287,6 @@ def process_file(file_path, save_as):
     #[DEBUG] PROFILING 
     print(f" TIME detect_oscillating_mzs: {time_detect_oscillating_mzs}")
    
-    
-   
         #2.3 Call to the correcting function in corrector.py
     xic_signals = {}
     modulated_signals = {}#Dict[target_mz: float, modulated: np.ndarray]
@@ -311,6 +294,7 @@ def process_file(file_path, save_as):
 
     start_time_corrector=time.time()
     
+    print("<<< Correcting file. ") 
     for target_mz in oscillating_mzs:
         
         xic, modulated_signal, residual_signal=correct_oscillations(rts, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz)
@@ -325,12 +309,13 @@ def process_file(file_path, save_as):
     #[DEBUG] PROFILING 
     print(f" TIME corrector: {time_corrector}")
     
+    
+    
     # 3. Apply changes (corrections) to spectra
     corrected_map, time_correct_spectra=correct_spectra(input_map, oscillating_mzs, rts, residual_signals)
     
     #[DEBUG] PROFILING 
     print(f" TIME correct_map: {time_correct_spectra}")
-    
     
     #Computation of overall execution time
     end_time=time.time()
@@ -338,6 +323,8 @@ def process_file(file_path, save_as):
     
     print("<<< Correction done. ") 
     print(f"Execution time: {time_elapsed:.3f}")
+    
+    
     
     # 4. Save changes in mzML file
     

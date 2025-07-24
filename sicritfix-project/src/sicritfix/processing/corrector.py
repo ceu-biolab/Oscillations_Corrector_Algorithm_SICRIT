@@ -1,79 +1,49 @@
 #processing/corrector.py
 
+#!/usr/bin/env python
+
+"""
+This Python module provides functionality to correct oscillations in MS signals
+by modeling sinusoidal artifacts and subtracting them from the original signal.
+
+@contents  :  Oscillation correction based on sinusoidal signal modeling.
+@project   :  SICRITfix – Oscillation Correction in Mass Spectrometry Data
+@program   :  N/A
+@file      :  corrector.py
+@version   :  0.0.1, 18 July 2025
+@author    :  Maite Gómez del Rio Vinuesa (maite.gomezriovinuesa@gmail.com)
+
+@information :
+    https://www.python.org/dev/peps/pep-0020/
+    https://www.python.org/dev/peps/pep-0008/
+    http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html
+
+@dependencies :
+    - numpy
+    - sicritfix.utils.intensity_analyzer
+
+@functions :
+    - generate_modulated_signal
+    - correct_oscillations
+
+@notes :
+    The core logic assumes the oscillatory component is a single-frequency sinusoid
+    estimated from local frequencies and reference phase information.
+
+@copyright :
+    Copyright 2025 GNU AFFERO GENERAL PUBLIC LICENSE.
+    All rights reserved. Reproduction in whole or in part is prohibited
+    without the written consent of the copyright owner.
+"""
+__author__    = "Maite Gómez del Rio Vinuesa"
+__copyright__ = "GPL License version 3"
+
+
+
 import numpy as np
+from sicritfix.utils.intensity_analyzer import build_xic, get_amplitude
 
 
-def build_xic(mz_array, intensity_array, rt_array, target_mz, mz_tol=0.1):
-    """
-    Builds XIC for a given m/z value
-    
-    Returns: Array of intensities along RT for that given m/z
-    """
-    xic = []
-    for mzs, intensities in zip(mz_array, intensity_array):
-        is_in_tol = np.abs(mzs - target_mz) < mz_tol
-        if np.any(is_in_tol):
-            xic.append(np.sum(intensities[is_in_tol]))
-        else:
-            xic.append(0.0)
-            
-    return np.array(xic)
-
-def get_amplitude(target_mz, xic, rt_array, local_freqs, sampling_interval):
-    
-    """
-    Estimates the amplitude of a signal in an extracted ion chromatogram (XIC)
-    using local frequency information and percentile-based statistics.The final amplitude is taken 
-    as the 75th percentile of the computed local amplitudes.
-
-    Parameters
-    ----------
-    target_mz : float
-        Target mass-to-charge ratio (m/z) of the ion of interest.
-    
-    xic : np.ndarray
-        Extracted ion chromatogram.
-    
-    rt_array : np.ndarray
-        Retention time array corresponding to the XIC.
-    
-    local_freqs : np.ndarray
-        Array of local frequency estimates (in Hz) across the signal.
-    
-    sampling_interval : float
-        Time interval between samples in the XIC (in seconds).
-
-    Returns
-    -------
-    amplitude : float
-        Estimated amplitude of the signal, based on the 75th percentile
-        of the local amplitude estimates across all valid local frequencies.
-    """
-    
-    local_amplitudes=[]
-    
-    
-    for i, freq in enumerate (local_freqs):
-        
-        if freq<=0:
-            continue
-        
-        period=int(1/(freq*sampling_interval))
-        
-        center=i*int(len(xic) / len(local_freqs))
-        start=int(max(0, center-period/2))
-        end=int(min(len(xic), center+period/2))
-        window=xic[start:end]
-        
-        q25, q75 = np.percentile(window, [25, 75])
-        local_amplitude = (q75 - q25) / 2
-        local_amplitudes.append(local_amplitude)
-        
-        
-    amplitude = np.percentile(local_amplitudes, 75)
-    
-    return amplitude
-    
 def generate_modulated_signal(amplitude, phase):
     """
     Generates a modulated sinusoidal signal for oscillation correction.
@@ -153,7 +123,7 @@ def correct_oscillations(rt_array, mz_array, intensity_array, phase_ref, local_f
     
     # 3. Amplitude at each m/z
     amplitude=get_amplitude(target_mz, xic, rt_array, local_freqs_ref, sampling_interval)
-    #print(f"Amplitude for m/z: {target_mz} is: {amplitude}")
+    
     
     # 4. Creation of the modulated signal
     modulated_signal = generate_modulated_signal(amplitude, phase_ref)
