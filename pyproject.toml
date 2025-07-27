@@ -1,3 +1,39 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "sicritfix"
+version = "0.1.0"
+description = "Python package to detect and correct oscillatory artifacts in mass spectrometry mzML data."
+authors = ["Maite Gómez del Rio Vinuesa <maite.gomezriovinuesa@gmail.com>"]
+maintainers = ["Maite Gómez del Rio Vinuesa <maite.gomezriovinuesa@gmail.com>"]
+license = "GPL-3.0-only"
+readme = "README.md"
+homepage = "https://github.com/MaiteGomezRio/Oscillations_Corrector_Algorithm_SICRIT"
+repository = "https://github.com/MaiteGomezRio/Oscillations_Corrector_Algorithm_SICRIT"
+requires-python = ">=3.8"
+keywords = ["mass spectrometry", "mzML", "signal correction", "fft", "phase", "oscillations"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: OS Independent"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+numpy = "^1.22"
+scipy = "^1.8"
+pyopenms = "*"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.0"
+
+[tool.poetry.urls]
+Documentation = "https://github.com/MaiteGomezRio/Oscillations_Corrector_Algorithm_SICRIT#readme"

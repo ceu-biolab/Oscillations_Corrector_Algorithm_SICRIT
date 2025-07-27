@@ -49,6 +49,7 @@ from collections import defaultdict
 from sicritfix.processing.corrector import correct_oscillations
 from sicritfix.io.io import load_file
 from sicritfix.utils.frequency_analyzer import obtain_freq_from_signal
+from sicritfix.utils.intensity_analyzer import build_xic
 #from sicritfix.validation.validator import plot_all, export_xic_signals_2_csv, plot_original_and_corrected
 
 

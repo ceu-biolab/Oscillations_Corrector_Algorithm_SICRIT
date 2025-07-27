@@ -34,13 +34,13 @@ oscillatory behavior in chromatographic signals from mass spectrometry data.
 
 @copyright :
     Copyright 2025 GNU AFFER
-
+"""
 
 
 import numpy as np
 from scipy.fftpack import fft
 from scipy.integrate import cumulative_trapezoid
-
+from sicritfix.utils.intensity_analyzer import build_xic
 
 def calculate_freq(xic, sampling_interval=1.0):
     """
