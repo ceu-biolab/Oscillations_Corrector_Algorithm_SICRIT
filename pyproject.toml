@@ -12,7 +12,6 @@ license = "GPL-3.0-only"
 readme = "README.md"
 homepage = "https://github.com/MaiteGomezRio/Oscillations_Corrector_Algorithm_SICRIT"
 repository = "https://github.com/MaiteGomezRio/Oscillations_Corrector_Algorithm_SICRIT"
-requires-python = ">=3.8"
 keywords = ["mass spectrometry", "mzML", "signal correction", "fft", "phase", "oscillations"]
 
 classifiers = [
@@ -26,6 +25,10 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 
+packages = [
+    { include = "sicritfix", from = "sicritfix-project/src" }
+]
+
 [tool.poetry.dependencies]
 python = ">=3.8"
 numpy = "^1.22"
@@ -37,3 +40,6 @@ pytest = "^7.0"
 
 [tool.poetry.urls]
 Documentation = "https://github.com/MaiteGomezRio/Oscillations_Corrector_Algorithm_SICRIT#readme"
+
+[tool.poetry.scripts]
+sicritfix="sicritfix.cli:main"

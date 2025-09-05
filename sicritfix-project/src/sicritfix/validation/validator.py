@@ -363,7 +363,7 @@ def plot_original_and_corrected(rts, target_mz, xic, residual_signal):
     """
     plt.figure(8,4)
     plt.plot(rts, xic, label='Original XIC signal', color='black', linewidth=0.8)
-    plt.plot(rts, residual_signal, labbel='Corrected signal', color='blue', linewidth=0.8)
+    plt.plot(rts, residual_signal, label='Corrected signal', color='blue', linewidth=0.8)
     plt.xlabel("Retention time (s)")
     plt.ylabel("Intesity")
     plt.title(f"XIC original signal vs Corrected signal for m/z = {target_mz}")

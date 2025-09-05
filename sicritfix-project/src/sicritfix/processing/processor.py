@@ -50,7 +50,7 @@ from sicritfix.processing.corrector import correct_oscillations
 from sicritfix.io.io import load_file
 from sicritfix.utils.frequency_analyzer import obtain_freq_from_signal
 from sicritfix.utils.intensity_analyzer import build_xic
-#from sicritfix.validation.validator import plot_all, export_xic_signals_2_csv, plot_original_and_corrected
+from sicritfix.validation.validator import plot_original_and_corrected
 
 
 def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_bin_size=0.01, min_occurrences=10, power_threshold=0.15):
@@ -217,7 +217,7 @@ def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_si
     return corrected_map, time_correct_spectra
         
 
-def process_file(file_path, save_as):
+def process_file(file_path, save_as, plot=False, verbose=False):
     """
    Main pipeline for detecting and correcting oscillatory artifacts in an MS data file.
 
@@ -257,79 +257,95 @@ def process_file(file_path, save_as):
     start_time=time.time()
     input_map=load_file(file_path)
 
+    if verbose:
+        # 1. Load MS data from the original file (rts, mzs, and intesity values)
     
-    # 1. Load MS data from the original file (rts, mzs, and intesity values)
-    
-    original_spectra = []
-    mz_array = []
-    intensity_array=[]
-    rts = []#secs
-    tic_original = []
-    
-    
-    for spectrum in input_map:
-        original_spectra.append(spectrum)
-        mzs, intensities = spectrum.get_peaks()
-        mz_array.append(mzs)
-        intensity_array.append(intensities)
-        rt = spectrum.getRT()
-        rts.append(rt)
-        tic_original.append(np.sum(intensities))
+        original_spectra = []
+        mz_array = []
+        intensity_array=[]
+        rts = []#secs
+        tic_original = []
     
     
-    # 2. Oscillations' correction
-    
-        #2.1 Extract freq from signal of ref: m/z=922.098    
-    local_freqs_ref, phase_ref = obtain_freq_from_signal(rts, mz_array, intensity_array)
-    
-    
-        #2.2 Detect mzs to correct
-    binned_mzs, oscillating_mzs, time_detect_oscillating_mzs=detect_oscillating_mzs(rts, mz_array, intensity_array)
-    #[DEBUG] PROFILING 
-    print(f" TIME detect_oscillating_mzs: {time_detect_oscillating_mzs}")
-   
-        #2.3 Call to the correcting function in corrector.py
-    xic_signals = {}
-    modulated_signals = {}#Dict[target_mz: float, modulated: np.ndarray]
-    residual_signals = {}#Dict[target_mz: float, residual: np.ndarray]
-
-    start_time_corrector=time.time()
-    
-    print("<<< Correcting file. ") 
-    for target_mz in oscillating_mzs:
+        for spectrum in input_map:
+            original_spectra.append(spectrum)
+            mzs, intensities = spectrum.get_peaks()
+            mz_array.append(mzs)
+            intensity_array.append(intensities)
+            rt = spectrum.getRT()
+            rts.append(rt)
+            tic_original.append(np.sum(intensities))
         
-        xic, modulated_signal, residual_signal=correct_oscillations(rts, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz)
         
-        xic_signals[target_mz] = xic
-        modulated_signals[target_mz] = modulated_signal
-        residual_signals[target_mz] = residual_signal
-    
-    end_time_corrector=time.time()
-    
-    time_corrector=end_time_corrector-start_time_corrector
-    #[DEBUG] PROFILING 
-    print(f" TIME corrector: {time_corrector}")
-    
-    
-    
-    # 3. Apply changes (corrections) to spectra
-    corrected_map, time_correct_spectra=correct_spectra(input_map, oscillating_mzs, rts, residual_signals)
-    
-    #[DEBUG] PROFILING 
-    print(f" TIME correct_map: {time_correct_spectra}")
-    
-    #Computation of overall execution time
-    end_time=time.time()
-    time_elapsed=end_time-start_time
-    
-    print("<<< Correction done. ") 
-    print(f"Execution time: {time_elapsed:.3f}")
-    
-    
-    
-    # 4. Save changes in mzML file
-    
-    oms.MzMLFile().store(save_as, corrected_map)
-    print(f"Corrected file saved: {save_as}")
+        # 2. Oscillations' correction
+        
+            #2.1 Extract freq from signal of ref: m/z=922.098  
+        try:
+            local_freqs_ref, phase_ref = obtain_freq_from_signal(rts, mz_array, intensity_array)
+        except ValueError:
+            print(" Reference signal empty. No oscillations detected")
+            oms.MzMLFile().store(save_as, input_map)
+            return False
+        
+            #2.2 Detect mzs to correct
+        binned_mzs, oscillating_mzs, time_detect_oscillating_mzs=detect_oscillating_mzs(rts, mz_array, intensity_array)
+        #[DEBUG] PROFILING 
+        #print(f" TIME detect_oscillating_mzs: {time_detect_oscillating_mzs}")
+        
+        if not oscillating_mzs:
+            print(" File with no oscillations detected. Returning original file.")
+            oms.MzMLFile().store(save_as, input_map)
+            print(f" Original file saved as: {save_as}")
+            return False
+       
+            #2.3 Call to the correcting function in corrector.py
+        xic_signals = {}
+        modulated_signals = {}#Dict[target_mz: float, modulated: np.ndarray]
+        residual_signals = {}#Dict[target_mz: float, residual: np.ndarray]
+        
+        
+        
+        start_time_corrector=time.time()
+        
+        print("<<< Correcting file. ") 
+        for target_mz in oscillating_mzs:
+            
+            xic, modulated_signal, residual_signal=correct_oscillations(rts, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz)
+            
+            xic_signals[target_mz] = xic
+            modulated_signals[target_mz] = modulated_signal
+            residual_signals[target_mz] = residual_signal
+            
+            if plot:
+                plot_original_and_corrected(rts, target_mz, xic, residual_signal)
+        
+        end_time_corrector=time.time()
+        
+        time_corrector=end_time_corrector-start_time_corrector
+        #[DEBUG] PROFILING 
+        #print(f" TIME corrector: {time_corrector}")
+        
+        
+        
+        # 3. Apply changes (corrections) to spectra
+        corrected_map, time_correct_spectra=correct_spectra(input_map, oscillating_mzs, rts, residual_signals)
+        
+        #[DEBUG] PROFILING 
+        #print(f" TIME correct_map: {time_correct_spectra}")
+        
+        #Computation of overall execution time
+        end_time=time.time()
+        time_elapsed=end_time-start_time
+        
+        print("<<< Correction done. ") 
+        print(f"Execution time: {time_elapsed:.3f}")
+        
+        
+        
+        # 4. Save changes in mzML file
+        
+        oms.MzMLFile().store(save_as, corrected_map)
+        return True
+        print(f"Corrected file saved: {save_as}")
 
 

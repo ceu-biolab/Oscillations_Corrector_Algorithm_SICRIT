@@ -54,13 +54,19 @@ def main():
         print(" Starting processing")
         print(f" Input: {args.input}")
         print(f" Output: {output_path}")
-        if args.plot:
-            print(" Plotting is ENABLED")
+        
+    if args.plot:
+        print(" Plotting is ENABLED")
 
     # Run the processing function
-    process_file(
+    file_corrected=process_file(
         file_path=args.input,
         save_as=output_path,
         plot=args.plot,
         verbose=args.verbose,
     )
+    
+    if file_corrected:
+        print(f" Oscillations were detected and corrected. Corrected file saved to: {output_path}")
+    else:
+        print(f" No oscillations detected. Original file saved to: {output_path}")

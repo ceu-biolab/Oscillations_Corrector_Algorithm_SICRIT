@@ -26,8 +26,8 @@ class TestIntensityAnalyzer(unittest.TestCase):
         self.n_scans = 100
         self.mz_points = 1000
         self.rt_array = np.linspace(0, 99, self.n_scans)
-        self.target_mz = 600.0
-        self.mz_tol = 0.1
+        self.target_mz = 922.098
+        self.mz_tol = 0.2
         self.sampling_interval = np.mean(np.diff(self.rt_array))
         self.local_freqs = np.full(20, 0.2)  # constant freq (Hz)
 
@@ -35,10 +35,10 @@ class TestIntensityAnalyzer(unittest.TestCase):
         self.mz_array = []
         self.intensity_array = []
         for _ in range(self.n_scans):
-            mzs = np.linspace(500, 700, self.mz_points)
+            mzs = np.linspace(800, 1000, self.mz_points)
             intensities = np.random.normal(0, 0.5, self.mz_points)
             # Add a Gaussian peak around target_mz
-            intensities += 100 * np.exp(-0.5 * ((mzs - self.target_mz) / 0.02) ** 2)
+            intensities += 100 * np.exp(-0.5 * ((mzs - self.target_mz) / 0.1) ** 2)
             self.mz_array.append(mzs)
             self.intensity_array.append(intensities)
 
