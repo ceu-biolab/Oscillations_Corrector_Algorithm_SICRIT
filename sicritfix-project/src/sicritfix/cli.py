@@ -81,6 +81,8 @@ def main():
         save_as=output_path,
         plot=args.plot,
         verbose=args.verbose,
+        mz_window=args.mz_window,
+        rt_window=args.rt_window,
     )
     
     if file_corrected:

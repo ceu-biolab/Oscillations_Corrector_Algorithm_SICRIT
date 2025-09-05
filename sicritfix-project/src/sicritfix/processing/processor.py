@@ -257,95 +257,104 @@ def process_file(file_path, save_as, plot=False, verbose=False):
     start_time=time.time()
     input_map=load_file(file_path)
 
+        
+    # 1. Load MS data from the original file (rts, mzs, and intesity values)
+        
+    original_spectra = []
+    mz_array = []
+    intensity_array=[]
+    rts = []#secs
+    tic_original = []
+        
+        
+    for spectrum in input_map:
+        original_spectra.append(spectrum)
+        mzs, intensities = spectrum.get_peaks()
+        mz_array.append(mzs)
+        intensity_array.append(intensities)
+        rt = spectrum.getRT()
+        rts.append(rt)
+        tic_original.append(np.sum(intensities))
+            
     if verbose:
-        # 1. Load MS data from the original file (rts, mzs, and intesity values)
-    
-        original_spectra = []
-        mz_array = []
-        intensity_array=[]
-        rts = []#secs
-        tic_original = []
-    
-    
-        for spectrum in input_map:
-            original_spectra.append(spectrum)
-            mzs, intensities = spectrum.get_peaks()
-            mz_array.append(mzs)
-            intensity_array.append(intensities)
-            rt = spectrum.getRT()
-            rts.append(rt)
-            tic_original.append(np.sum(intensities))
-        
-        
-        # 2. Oscillations' correction
-        
-            #2.1 Extract freq from signal of ref: m/z=922.098  
-        try:
-            local_freqs_ref, phase_ref = obtain_freq_from_signal(rts, mz_array, intensity_array)
-        except ValueError:
-            print(" Reference signal empty. No oscillations detected")
-            oms.MzMLFile().store(save_as, input_map)
-            return False
-        
-            #2.2 Detect mzs to correct
-        binned_mzs, oscillating_mzs, time_detect_oscillating_mzs=detect_oscillating_mzs(rts, mz_array, intensity_array)
-        #[DEBUG] PROFILING 
-        #print(f" TIME detect_oscillating_mzs: {time_detect_oscillating_mzs}")
-        
-        if not oscillating_mzs:
-            print(" File with no oscillations detected. Returning original file.")
-            oms.MzMLFile().store(save_as, input_map)
-            print(f" Original file saved as: {save_as}")
-            return False
-       
-            #2.3 Call to the correcting function in corrector.py
-        xic_signals = {}
-        modulated_signals = {}#Dict[target_mz: float, modulated: np.ndarray]
-        residual_signals = {}#Dict[target_mz: float, residual: np.ndarray]
-        
-        
-        
-        start_time_corrector=time.time()
-        
-        print("<<< Correcting file. ") 
-        for target_mz in oscillating_mzs:
+        print(f"Loaded file from {file_path}")
+    # 2. Oscillations' correction
             
-            xic, modulated_signal, residual_signal=correct_oscillations(rts, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz)
+        #2.1 Extract freq from signal of ref: m/z=922.098  
+    try:
+        local_freqs_ref, phase_ref = obtain_freq_from_signal(rts, mz_array, intensity_array)
+    except ValueError:
+        print(" Reference signal empty. No oscillations detected")
+        oms.MzMLFile().store(save_as, input_map)
+        return False
             
-            xic_signals[target_mz] = xic
-            modulated_signals[target_mz] = modulated_signal
-            residual_signals[target_mz] = residual_signal
+        #2.2 Detect mzs to correct
+    binned_mzs, oscillating_mzs, time_detect_oscillating_mzs=detect_oscillating_mzs(rts, mz_array, intensity_array)
+    #[DEBUG] PROFILING 
+    #print(f" TIME detect_oscillating_mzs: {time_detect_oscillating_mzs}")
             
-            if plot:
-                plot_original_and_corrected(rts, target_mz, xic, residual_signal)
-        
+    if not oscillating_mzs:
+        print(" File with no oscillations detected. Returning original file.")
+        oms.MzMLFile().store(save_as, input_map)
+        print(f" Original file saved as: {save_as}")
+        return False
+    
+    if verbose: 
+        print(" Oscillating m/z values found. Correcting...")
+           
+        #2.3 Call to the correcting function in corrector.py
+    xic_signals = {}
+    modulated_signals = {}#Dict[target_mz: float, modulated: np.ndarray]
+    residual_signals = {}#Dict[target_mz: float, residual: np.ndarray]
+            
+            
+            
+    start_time_corrector=time.time()
+            
+    print("<<< Correcting file. ") 
+    for target_mz in oscillating_mzs:
+                
+        xic, modulated_signal, residual_signal=correct_oscillations(rts, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz)
+                
+        xic_signals[target_mz] = xic
+        modulated_signals[target_mz] = modulated_signal
+        residual_signals[target_mz] = residual_signal
+                
+        if plot:
+            plot_original_and_corrected(rts, target_mz, xic, residual_signal)
+            
         end_time_corrector=time.time()
-        
+            
         time_corrector=end_time_corrector-start_time_corrector
         #[DEBUG] PROFILING 
         #print(f" TIME corrector: {time_corrector}")
-        
-        
-        
+            
+            
+            
         # 3. Apply changes (corrections) to spectra
         corrected_map, time_correct_spectra=correct_spectra(input_map, oscillating_mzs, rts, residual_signals)
-        
+            
         #[DEBUG] PROFILING 
         #print(f" TIME correct_map: {time_correct_spectra}")
-        
+            
         #Computation of overall execution time
         end_time=time.time()
         time_elapsed=end_time-start_time
         
+        if verbose:
+            print(f" Correction done in {time_elapsed:.3f} seconds")
+        
         print("<<< Correction done. ") 
         print(f"Execution time: {time_elapsed:.3f}")
-        
-        
-        
+            
+            
+            
         # 4. Save changes in mzML file
-        
+            
         oms.MzMLFile().store(save_as, corrected_map)
+        
+        if verbose:
+            print(f"Corrected file saved: {save_as}")
+            
         return True
-        print(f"Corrected file saved: {save_as}")
-
 
