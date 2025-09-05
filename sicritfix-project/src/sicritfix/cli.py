@@ -12,10 +12,17 @@ def main():
     parser.add_argument("input", help="Path to input mzML file")
 
     parser.add_argument(
-        "output",
-        nargs="?",
+        "--output",
         help="(Optional) Path to output corrected mzML file. "
              "If not provided, '_corrected.mzML' will be added to the input filename."
+    )
+
+    parser.add_argument(
+        "--mz_window", action="store_true", help="MZ window to calculate the different amplitude in each mz window"
+    )
+
+    parser.add_argument(
+        "--rt_window", action="store_true", help="RT window to calculate the frequency of the oscillations"
     )
 
     parser.add_argument(
@@ -58,6 +65,16 @@ def main():
     if args.plot:
         print(" Plotting is ENABLED")
 
+    if args.rt_window:
+        rt_window=args.rt_window
+    else:
+        rt_window=0.01
+
+    if args.mz_window:
+        mz_window=args.mz_window
+    else:
+        mz_window=0.01
+    
     # Run the processing function
     file_corrected=process_file(
         file_path=args.input,
