@@ -3,12 +3,10 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - python=3.11
+  - python>=3.8
   - pip
-  - numpy
-  - setuptools
-  - wheel
+  - numpy=1.22.*
+  - scipy=1.8.*
   - pip:
       - pandas
-      - pyopenms
-      - pyteomics
+      - pyopenms ="*"
