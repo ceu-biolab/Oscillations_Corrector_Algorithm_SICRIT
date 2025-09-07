@@ -104,13 +104,25 @@ file: sample2.mzXML loaded correctly
 ## Examples
 Process a single file:
 ```bash
+sicritfix data/sample.mzXML --plot
+```
+or
+```bash
 python CLI.py data/sample.mzXML --plot
 ```
 Process all files in a folder:
 ```bash
+sicritfix data/sample.mzXML --overwrite
+```
+or
+```bash
 python CLI.py data/ --overwrite
 ```
 Verbose mode:
+```bash
+sicritfix data/sample.mzXML --verbose
+```
+or
 ```bash
 python CLI.py data/sample.mzML --verbose
 ```
