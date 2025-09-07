@@ -37,8 +37,8 @@ It includes:
 Clone the repository and install dependencies inside a conda environment:
 
 ```bash
-git clone https://github.com/yourusername/sicritfix.git
-cd sicritfix
+git clone https://github.com/ceu-biolab/Oscillations_Corrector_Algorithm_SICRIT.git
+cd Oscillations_Corrector_Algorithm_SICRIT
 
 conda create -n sicritfix python=3.12
 conda activate sicritfix
@@ -51,25 +51,25 @@ You can run the program from the command line after installation.
 Both single files and folders are supported.
 
 ### Processing a Single File
-      Run the tool with an input file:
+Run the tool with an input file:
 
-      ```bash
-      python sicritfix.py input_file.mzXML --output corrected.mzML --overwrite
+```bash
+python sicritfix.py input_file.mzXML --output corrected.mzML --overwrite
 
-      If no --output is provided, the tool will automatically generate a filename by appending _corrected.mzML.
+If no --output is provided, the tool will automatically generate a filename by appending _corrected.mzML.
 
 ### Processing a Folder of Files
-    To process an entire folder of `.mzXML` files, simply pass the folder path as input.  
-    Each file will be automatically converted to `.mzML`, processed, and saved.
+To process an entire folder of `.mzXML` files, simply pass the folder path as input.  
+Each file will be automatically converted to `.mzML`, processed, and saved.
 
-    ```bash
-    python CLI.py /path/to/folder --overwrite --verbose
+```bash
+python CLI.py /path/to/folder --overwrite --verbose
 
-    During execution you’ll see messages like:
+During execution you’ll see messages like:
 
-    ```bash
-    file: sample1.mzXML loaded correctly
-    file: sample2.mzXML loaded correctly
+```bash
+file: sample1.mzXML loaded correctly
+file: sample2.mzXML loaded correctly
 
 ### Command-Line Options
 
