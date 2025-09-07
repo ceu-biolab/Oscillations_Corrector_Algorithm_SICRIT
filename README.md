@@ -22,7 +22,6 @@ The tool includes a **command-line interface (CLI)** to process single files or 
 ---
 
 ## Introduction
-
 This Python module provides a pipeline for correcting oscillatory artifacts in CE-SICRIT-MS spectra.  
 It includes:
 - Automatic loading of `.mzML` and `.mzXML` files.  
@@ -43,7 +42,7 @@ cd Oscillations_Corrector_Algorithm_SICRIT
 conda create -n sicritfix python=3.12
 conda activate sicritfix
 pip install -e .
-
+```
 ---
 
 ## Usage
@@ -55,7 +54,7 @@ Run the tool with an input file:
 
 ```bash
 python sicritfix.py input_file.mzXML --output corrected.mzML --overwrite
-
+```
 If no --output is provided, the tool will automatically generate a filename by appending _corrected.mzML.
 
 ### Processing a Folder of Files
@@ -64,13 +63,13 @@ Each file will be automatically converted to `.mzML`, processed, and saved.
 
 ```bash
 python CLI.py /path/to/folder --overwrite --verbose
-
+```
 During execution you’ll see messages like:
 
 ```bash
 file: sample1.mzXML loaded correctly
 file: sample2.mzXML loaded correctly
-
+```
 ### Command-Line Options
 - `--output` : Output path (optional).  
 - `--overwrite` : Overwrite existing files.  
@@ -106,15 +105,15 @@ file: sample2.mzXML loaded correctly
 Process a single file:
 ```bash
 python CLI.py data/sample.mzXML --plot
-
+```
 Process all files in a folder:
 ```bash
 python CLI.py data/ --overwrite
-
+```
 Verbose mode:
 ```bash
 python CLI.py data/sample.mzML --verbose
-
+```
 ---
 
 ## License
