@@ -72,7 +72,6 @@ file: sample1.mzXML loaded correctly
 file: sample2.mzXML loaded correctly
 
 ### Command-Line Options
-
 - `--output` : Output path (optional).  
 - `--overwrite` : Overwrite existing files.  
 - `--plot` : Show diagnostic plots.  
@@ -83,7 +82,6 @@ file: sample2.mzXML loaded correctly
 ---
 
 ## Detection and Correction Workflow
-
 1. Load the input file(s).  
    - If `.mzXML` is detected, it is converted to `.mzML`.  
 
@@ -105,7 +103,6 @@ file: sample2.mzXML loaded correctly
 ---
 
 ## Examples
-
 Process a single file:
 ```bash
 python CLI.py data/sample.mzXML --plot
@@ -121,5 +118,3 @@ python CLI.py data/sample.mzML --verbose
 ---
 
 ## License
-
-
