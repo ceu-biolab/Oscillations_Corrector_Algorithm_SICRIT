@@ -75,6 +75,7 @@ def load_file(file_path):
         else:
             print("Loading mzML file...")
             oms.MzMLFile().load(mzml_file_path, input_map)
+            print(f"File: {os.path.basename(file_path)} loaded correctly")
     else:
         oms.MzMLFile().load(file_path, input_map)
     

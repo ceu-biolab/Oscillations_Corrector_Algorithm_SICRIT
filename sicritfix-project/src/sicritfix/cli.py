@@ -17,13 +17,22 @@ def main():
              "If not provided, '_corrected.mzML' will be added to the input filename."
     )
 
+    
     parser.add_argument(
-        "--mz_window", action="store_true", help="MZ window to calculate the different amplitude in each mz window"
+        "--mz_window", type=float, default=0.01,
+        help="MZ window to calculate the different amplitude in each mz window"
     )
 
     parser.add_argument(
-        "--rt_window", action="store_true", help="RT window to calculate the frequency of the oscillations"
+        "--rt_window", type=float, default=0.01,
+        help="RT window to calculate the frequency of the oscillations"
     )
+    
+    parser.add_argument(
+        "--input_dir",
+        help="Path to a folder containing multiple mzXML/mzML files to process"
+    )
+
 
     parser.add_argument(
         "--overwrite", action="store_true", help="Overwrite output file if it exists"
@@ -64,26 +73,35 @@ def main():
         
     if args.plot:
         print(" Plotting is ENABLED")
-
-    if args.rt_window:
-        rt_window=args.rt_window
+        
+    if args.input_dir:
+        # process folder
+        for fname in os.listdir(args.input_dir):
+            if fname.lower().endswith((".mzxml", ".mzml")):
+                input_path = os.path.join(args.input_dir, fname)
+                base, ext = os.path.splitext(input_path)
+                output_path = base + "_corrected.mzML"
+                print(f"File: {os.path.basename(args.input_dir)} loaded correctly")
+                process_file(
+                    file_path=input_path,
+                    save_as=output_path,
+                    plot=args.plot,
+                    verbose=args.verbose,
+                    mz_window=args.mz_window,
+                    rt_window=args.rt_window,
+               )
     else:
-        rt_window=0.01
-
-    if args.mz_window:
-        mz_window=args.mz_window
-    else:
-        mz_window=0.01
+        
+        # Run the processing function
+        file_corrected=process_file(
+            file_path=args.input,
+            save_as=output_path,
+            plot=args.plot,
+            verbose=args.verbose,
+            mz_window=args.mz_window,
+            rt_window=args.rt_window,
+        )
     
-    # Run the processing function
-    file_corrected=process_file(
-        file_path=args.input,
-        save_as=output_path,
-        plot=args.plot,
-        verbose=args.verbose,
-        mz_window=args.mz_window,
-        rt_window=args.rt_window,
-    )
     
     if file_corrected:
         print(f" Oscillations were detected and corrected. Corrected file saved to: {output_path}")

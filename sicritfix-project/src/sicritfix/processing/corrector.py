@@ -68,7 +68,7 @@ def generate_modulated_signal(amplitude, phase):
     
     return modulated_signal
     
-def correct_oscillations(rt_array, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz, window_size=70):
+def correct_oscillations(rt_array, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz, rt_window, window_size=70):
     """
     Corrects oscillations in an extracted ion chromatogram (XIC) by subtracting a
     modulated sinusoidal signal based on local frequency and amplitude estimates.
@@ -114,7 +114,7 @@ def correct_oscillations(rt_array, mz_array, intensity_array, phase_ref, local_f
            from the original XIC.
    """
     #1. Extract XIC from original signal (intensities for each RT at target_mz)
-    xic=build_xic(mz_array, intensity_array, rt_array, target_mz)
+    xic=build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window)
     
 
     #2. Frequency with polynomial regression

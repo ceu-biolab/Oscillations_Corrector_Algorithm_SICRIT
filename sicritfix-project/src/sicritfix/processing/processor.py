@@ -53,7 +53,7 @@ from sicritfix.utils.intensity_analyzer import build_xic
 from sicritfix.validation.validator import plot_original_and_corrected
 
 
-def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_bin_size=0.01, min_occurrences=10, power_threshold=0.15):
+def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window, rt_window, min_occurrences=10, power_threshold=0.15):
     
     """
     Detects m/z values exhibiting oscillatory behavior based on their XICs using FFT analysis.
@@ -73,7 +73,7 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_bin_size=0.01
     intensity_array : list of np.ndarray
         List of intensity arrays corresponding to each m/z array per scan.
     
-    mz_bin_size : float, optional (default=0.01)
+    mz_window : float, optional (default=0.01)
         Size of the bin used to group close m/z values for counting and detection.
     
     min_occurrences : int, optional (default=10)
@@ -98,7 +98,7 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_bin_size=0.01
     
     #1. Binning of all m/z values across all spectra
     for mzs in mz_array:
-        binned_mzs=np.round(mzs/mz_bin_size)*mz_bin_size
+        binned_mzs=np.round(mzs/mz_window)*mz_window
         for mz in binned_mzs:
             mz_counts[mz]+=1
             
@@ -114,7 +114,8 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_bin_size=0.01
 
         #3.1 Analysis of XIC for each m/z
     for mz in candidate_mzs:
-        xic=build_xic(mz_array, intensity_array, rt_array, target_mz=mz)
+        target_mz=mz
+        xic=build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window)
         if(np.sum(xic) < 1e-5):
             continue #this means signal is too weak
         
@@ -217,7 +218,7 @@ def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_si
     return corrected_map, time_correct_spectra
         
 
-def process_file(file_path, save_as, plot=False, verbose=False):
+def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, rt_window=0.01):
     """
    Main pipeline for detecting and correcting oscillatory artifacts in an MS data file.
 
@@ -278,6 +279,7 @@ def process_file(file_path, save_as, plot=False, verbose=False):
             
     if verbose:
         print(f"Loaded file from {file_path}")
+        
     # 2. Oscillations' correction
             
         #2.1 Extract freq from signal of ref: m/z=922.098  
@@ -289,7 +291,7 @@ def process_file(file_path, save_as, plot=False, verbose=False):
         return False
             
         #2.2 Detect mzs to correct
-    binned_mzs, oscillating_mzs, time_detect_oscillating_mzs=detect_oscillating_mzs(rts, mz_array, intensity_array)
+    binned_mzs, oscillating_mzs, time_detect_oscillating_mzs=detect_oscillating_mzs(rts, mz_array, intensity_array, mz_window, rt_window)
     #[DEBUG] PROFILING 
     #print(f" TIME detect_oscillating_mzs: {time_detect_oscillating_mzs}")
             
@@ -314,7 +316,7 @@ def process_file(file_path, save_as, plot=False, verbose=False):
     print("<<< Correcting file. ") 
     for target_mz in oscillating_mzs:
                 
-        xic, modulated_signal, residual_signal=correct_oscillations(rts, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz)
+        xic, modulated_signal, residual_signal=correct_oscillations(rts, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz, rt_window)
                 
         xic_signals[target_mz] = xic
         modulated_signals[target_mz] = modulated_signal
