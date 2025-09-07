@@ -116,7 +116,7 @@ sicritfix data/sample.mzXML --overwrite
 ```
 or
 ```bash
-python CLI.py data/ --overwrite
+python CLI.py data/sample.mzXML --overwrite
 ```
 Verbose mode:
 ```bash
