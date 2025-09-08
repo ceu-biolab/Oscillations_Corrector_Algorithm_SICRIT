@@ -33,7 +33,12 @@ It includes:
 ---
 
 ## Installation
-Clone the repository and install dependencies inside a conda environment:
+If you want to use the last released version, it is published in pypy already. 
+```bash
+pip install sicritfix
+```
+
+If you want to install the source code or develop over it, clone the repository and install [the dependencies](conda_env.yml) inside a conda environment. If you want to run the CLI you shall install it as a module. 
 
 ```bash
 git clone https://github.com/ceu-biolab/Oscillations_Corrector_Algorithm_SICRIT.git
@@ -129,3 +134,9 @@ python CLI.py data/sample.mzML --verbose
 ---
 
 ## License
+
+This project is licensed under the GNU General Public License v3.0.
+
+You are free to use, modify, and distribute the software, but any derivative work must also be open-source under the GPL-3.0 license.
+
+For more details, see the full GPL-3.0 license.
