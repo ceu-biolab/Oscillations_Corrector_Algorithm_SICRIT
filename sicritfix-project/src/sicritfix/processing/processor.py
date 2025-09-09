@@ -114,8 +114,8 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window, rt_wi
 
         #3.1 Analysis of XIC for each m/z
     for mz in candidate_mzs:
-        target_mz=mz
-        xic=build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window)
+        xic=build_xic(mz_array, intensity_array, rt_array, target_mz=mz, rt_window=rt_window)
+        
         if(np.sum(xic) < 1e-5):
             continue #this means signal is too weak
         
@@ -283,17 +283,12 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, 
     # 2. Oscillations' correction
             
         #2.1 Extract freq from signal of ref: m/z=922.098  
-    try:
-        local_freqs_ref, phase_ref = obtain_freq_from_signal(rts, mz_array, intensity_array)
-    except ValueError:
-        print(" Reference signal empty. No oscillations detected")
-        oms.MzMLFile().store(save_as, input_map)
-        return False
+    local_freqs_ref, phase_ref = obtain_freq_from_signal(rts, mz_array, intensity_array, rt_window)
+    
             
         #2.2 Detect mzs to correct
     binned_mzs, oscillating_mzs, time_detect_oscillating_mzs=detect_oscillating_mzs(rts, mz_array, intensity_array, mz_window, rt_window)
-    #[DEBUG] PROFILING 
-    #print(f" TIME detect_oscillating_mzs: {time_detect_oscillating_mzs}")
+    
             
     if not oscillating_mzs:
         print(" File with no oscillations detected. Returning original file.")
@@ -308,10 +303,7 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, 
     xic_signals = {}
     modulated_signals = {}#Dict[target_mz: float, modulated: np.ndarray]
     residual_signals = {}#Dict[target_mz: float, residual: np.ndarray]
-            
-            
-            
-    start_time_corrector=time.time()
+                   
             
     print("<<< Correcting file. ") 
     for target_mz in oscillating_mzs:
@@ -325,38 +317,28 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, 
         if plot:
             plot_original_and_corrected(rts, target_mz, xic, residual_signal)
             
-        end_time_corrector=time.time()
             
-        time_corrector=end_time_corrector-start_time_corrector
-        #[DEBUG] PROFILING 
-        #print(f" TIME corrector: {time_corrector}")
+    # 3. Apply changes (corrections) to spectra
+    corrected_map, time_correct_spectra=correct_spectra(input_map, oscillating_mzs, rts, residual_signals)
             
             
-            
-        # 3. Apply changes (corrections) to spectra
-        corrected_map, time_correct_spectra=correct_spectra(input_map, oscillating_mzs, rts, residual_signals)
-            
-        #[DEBUG] PROFILING 
-        #print(f" TIME correct_map: {time_correct_spectra}")
-            
-        #Computation of overall execution time
-        end_time=time.time()
-        time_elapsed=end_time-start_time
+    #Computation of overall execution time
+    end_time=time.time()
+    time_elapsed=end_time-start_time
         
-        if verbose:
-            print(f" Correction done in {time_elapsed:.3f} seconds")
+    if verbose:
+        print(f" Correction done in {time_elapsed:.3f} seconds")
         
-        print("<<< Correction done. ") 
-        print(f"Execution time: {time_elapsed:.3f}")
+    print("<<< Correction done. ") 
+    print(f"Execution time: {time_elapsed:.3f}")
             
             
             
-        # 4. Save changes in mzML file
+    # 4. Save changes in mzML file
             
-        oms.MzMLFile().store(save_as, corrected_map)
+    oms.MzMLFile().store(save_as, corrected_map)
         
-        if verbose:
-            print(f"Corrected file saved: {save_as}")
-            
+    if verbose:
+        print(f"Corrected file saved: {save_as}")
         return True
 

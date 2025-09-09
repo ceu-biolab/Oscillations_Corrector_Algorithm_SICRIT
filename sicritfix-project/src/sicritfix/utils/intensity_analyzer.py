@@ -41,7 +41,7 @@ __copyright__ = "GPL License version 3"
 
 import numpy as np
 
-def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=None, mz_tol=0.1):
+def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=0.01, mz_tol=0.1):
     """
     Builds an Extracted Ion Chromatogram (XIC) for a target m/z value.
 
@@ -85,20 +85,19 @@ def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=None, mz
             
     xic=np.array(xic)
     
+    if rt_window==0.01:
+        return xic
+    
     # If rt_window size is specified: apply binning at RT
-    if rt_window is not None:
-        rt_min, rt_max = np.min(rt_array), np.max(rt_array)
-        bins = np.arange(rt_min, rt_max + rt_window, rt_window)
+    rt_min, rt_max = np.min(rt_array), np.max(rt_array)
+    bins = np.arange(rt_min, rt_max + rt_window, rt_window)
 
-        # Grouping of intensities in bins
-        digitized = np.digitize(rt_array, bins)
-        binned_xic = np.array([xic[digitized == i].sum() for i in range(1, len(bins))])
-        binned_rt = bins[:-1] + rt_window/2
+    # Grouping of intensities in bins
+    digitized = np.digitize(rt_array, bins)
+    binned_xic = np.array([xic[digitized == i].sum() for i in range(1, len(bins))])
+    #binned_rt = bins[:-1] + rt_window/2
 
-        return binned_rt, binned_xic
-
-    # If rt_widow not specified → return raw XIC
-    return rt_array, xic
+    return binned_xic
 
 def get_amplitude(target_mz, xic, rt_array, local_freqs, sampling_interval):
     
