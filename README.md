@@ -80,8 +80,9 @@ file: sample2.mzXML loaded correctly
 - `--overwrite` : Overwrite existing files.  
 - `--plot` : Show diagnostic plots.  
 - `--verbose` : Print detailed execution logs.  
-- `--mz_window` : m/z bin size for oscillation detection (default: `0.01`).  
-- `--rt_window` : Retention time window for XIC smoothing (default: `0.01`).  
+- `--mz_window` : m/z bin size for oscillation detection (default: `0.01`). Increasing this value groups nearby m/z peaks into larger bins, making the algorithm less sensitive to small differences in m/z but more tolerant to noise. Decreasing it makes detection more precise at the cost of possibly missing weak or noisy signals.
+- `--rt_window` : Retention time window for XIC smoothing (default: `0.01`).  This controls how intensities are aggregated across retention time. A larger value smooths the signal more strongly, which can improve frequency detection but may blur fine details in short peaks. A smaller value preserves fine temporal resolution but may leave more noise in the XIC.
+Note: Both parameters should be adjusted depending on the type of signa being processed.
 
 ---
 
