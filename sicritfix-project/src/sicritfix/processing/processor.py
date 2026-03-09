@@ -114,7 +114,14 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window, rt_wi
 
         #3.1 Analysis of XIC for each m/z
     for mz in candidate_mzs:
-        xic=build_xic(mz_array, intensity_array, rt_array, target_mz=mz, rt_window=rt_window)
+        xic = build_xic(
+            mz_array,
+            intensity_array,
+            rt_array,
+            target_mz=mz,
+            rt_window=rt_window,
+            mz_tol=mz_window,
+        )
         
         if(np.sum(xic) < 1e-5):
             continue #this means signal is too weak
@@ -283,7 +290,13 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, 
     # 2. Oscillations' correction
             
         #2.1 Extract freq from signal of ref: m/z=922.098  
-    local_freqs_ref, phase_ref = obtain_freq_from_signal(rts, mz_array, intensity_array, rt_window)
+    local_freqs_ref, phase_ref = obtain_freq_from_signal(
+        rts,
+        mz_array,
+        intensity_array,
+        rt_window,
+        mz_tol=mz_window,
+    )
     
             
         #2.2 Detect mzs to correct
@@ -308,7 +321,16 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, 
     print("<<< Correcting file. ") 
     for target_mz in oscillating_mzs:
                 
-        xic, modulated_signal, residual_signal=correct_oscillations(rts, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz, rt_window)
+        xic, modulated_signal, residual_signal = correct_oscillations(
+            rts,
+            mz_array,
+            intensity_array,
+            phase_ref,
+            local_freqs_ref,
+            target_mz,
+            rt_window,
+            mz_tol=mz_window,
+        )
                 
         xic_signals[target_mz] = xic
         modulated_signals[target_mz] = modulated_signal
@@ -340,5 +362,4 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, 
         
     if verbose:
         print(f"Corrected file saved: {save_as}")
-        return True
-
+    return True

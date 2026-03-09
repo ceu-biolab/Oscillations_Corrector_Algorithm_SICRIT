@@ -41,7 +41,7 @@ __copyright__ = "GPL License version 3"
 
 import numpy as np
 
-def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=0.01, mz_tol=0.1):
+def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=0.01, mz_tol=0.01):
     """
     Builds an Extracted Ion Chromatogram (XIC) for a target m/z value.
 
@@ -85,19 +85,26 @@ def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=0.01, mz
             
     xic=np.array(xic)
     
-    if rt_window==0.01:
+    # Preserve original point-by-point XIC for the default resolution.
+    if np.isclose(rt_window, 0.01, rtol=0.0, atol=1e-9):
         return xic
-    
-    # If rt_window size is specified: apply binning at RT
-    rt_min, rt_max = np.min(rt_array), np.max(rt_array)
-    bins = np.arange(rt_min, rt_max + rt_window, rt_window)
 
-    # Grouping of intensities in bins
-    digitized = np.digitize(rt_array, bins)
-    binned_xic = np.array([xic[digitized == i].sum() for i in range(1, len(bins))])
-    #binned_rt = bins[:-1] + rt_window/2
+    # Smooth over RT while preserving signal length to keep alignment with phase arrays.
+    rt_array = np.asarray(rt_array, dtype=float)
+    if rt_array.size < 2:
+        return xic
 
-    return binned_xic
+    sampling_interval = float(np.mean(np.diff(rt_array)))
+    if sampling_interval <= 0:
+        return xic
+
+    window_points = max(1, int(round(float(rt_window) / sampling_interval)))
+    if window_points <= 1:
+        return xic
+
+    kernel = np.ones(window_points, dtype=float) / window_points
+    smoothed_xic = np.convolve(xic, kernel, mode="same")
+    return smoothed_xic
 
 def get_amplitude(target_mz, xic, rt_array, local_freqs, sampling_interval):
     

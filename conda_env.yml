@@ -3,10 +3,9 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - python>=3.8
+  - python=3.11
   - pip
-  - numpy=1.22.*
-  - scipy=1.8.*
-  - pip:
-      - pandas
-      - pyopenms ="*"
+  - numpy>=2.0,<3
+  - scipy>=1.13
+  - pandas
+  - pyopenms
