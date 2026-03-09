@@ -24,7 +24,7 @@ def main():
     )
 
     parser.add_argument(
-        "--rt_window", type=float, default=30,
+        "--rt_window", type=float, default=5,
         help="RT window to calculate the frequency of the oscillations in seconds"
     )
     

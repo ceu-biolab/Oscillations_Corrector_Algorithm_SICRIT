@@ -83,7 +83,7 @@ def calculate_freq(xic, sampling_interval=1.0):
 
     return fft_freqs, fft_magnitude, main_freq
 
-def local_frequencies_with_fft(xic, rts, window_size, sampling_interval):
+def local_frequencies_with_fft(xic, rts, window_scan_size, sampling_interval):
     """
     Estimates local dominant frequencies in a signal using a sliding window FFT approach.
 
@@ -99,7 +99,7 @@ def local_frequencies_with_fft(xic, rts, window_size, sampling_interval):
     rts : np.ndarray
         Array of retention times corresponding to each point in the XIC.
 
-    window_size : int
+    window_scan_size : int
         Number of points in each sliding window used to estimate local frequency.
 
     sampling_interval : float
@@ -116,11 +116,11 @@ def local_frequencies_with_fft(xic, rts, window_size, sampling_interval):
     
     freqs = []
     times = []
-    step = window_size // 2
+    step = window_scan_size // 2
 
-    for i in range(0, len(xic) - window_size, step):
-        segment = xic[i:i+window_size]
-        rt_segment = rts[i:i+window_size]
+    for i in range(0, len(xic) - window_scan_size, step):
+        segment = xic[i:i+window_scan_size]
+        rt_segment = rts[i:i+window_scan_size]
         
         _, _, dom_freq = calculate_freq(segment, sampling_interval)
         
@@ -190,7 +190,7 @@ def obtain_freq_from_signal(rt_array, mz_array, intensity_array, rt_window, wind
     intensity_array : np.ndarray
         Intensity values corresponding to each m/z and retention time.
 
-    window_size : int, optional (default=70)
+    window_scan_size : int, optional (default=70)
         Size of the sliding window (in scans) used for local frequency estimation.
 
     mz_ref : float, optional (default=922.098)
@@ -208,7 +208,7 @@ def obtain_freq_from_signal(rt_array, mz_array, intensity_array, rt_window, wind
     
     
     sampling_interval = np.mean(np.diff(rt_array))
-    rt_freqs, local_freqs_ref = local_frequencies_with_fft(xic, rt_array, window_scan_size, sampling_interval)
+    rt_freqs, local_freqs_ref = local_frequencies_with_fft(xic, rt_array, window_scan_size=window_scan_size, sampling_interval=sampling_interval)
     phase_ref=apply_polynomial_regression(rt_array, rt_freqs, local_freqs_ref)
 
     return local_freqs_ref, phase_ref

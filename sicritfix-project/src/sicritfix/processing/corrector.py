@@ -75,9 +75,8 @@ def correct_oscillations(
     phase_ref,
     local_freqs_ref,
     target_mz,
-    rt_window=1,
-    mz_tol=0.01,
-    window_size=70,
+    rt_window=5,
+    mz_tol=0.01
 ):
     """
     Corrects oscillations in an extracted ion chromatogram (XIC) by subtracting a
@@ -114,10 +113,6 @@ def correct_oscillations(
             Tolerance window around the target m/z in Da. Peaks within 
             [target_mz - mz_tol, target_mz + mz_tol] will be included.
         
-        window_size : int, optional (default=70)
-           The size of the window (in scans) used for extracting the XIC 
-           around the target m/z.
-    
        Returns
        -------
        xic : np.ndarray
