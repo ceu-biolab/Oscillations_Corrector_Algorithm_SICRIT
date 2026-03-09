@@ -63,7 +63,7 @@ class TestCorrector(unittest.TestCase):
         local_freqs_ref = np.full_like(rt_array, 0.5)
 
         xic, modulated_signal, residual_signal = correct_oscillations(
-            rt_array, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz=200.0
+            rt_array, mz_array, intensity_array, phase_ref, local_freqs_ref, target_mz=200.0, rt_window=1
         )
 
         self.assertEqual(len(xic), len(rt_array))

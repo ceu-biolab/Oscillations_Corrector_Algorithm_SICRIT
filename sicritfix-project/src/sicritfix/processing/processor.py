@@ -76,13 +76,16 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window, rt_wi
     mz_window : float, optional (default=0.01)
         Size of the bin used to group close m/z values for counting and detection.
     
+    rt_window : float, optional (default=1)
+        Retention time window in seconds for XIC smoothing.
+    
     min_occurrences : int, optional (default=10)
         Minimum number of scans in which a binned m/z must appear to be considered for analysis.
     
     power_threshold : float, optional (default=0.15)
         Threshold on the normalized FFT power (excluding DC component) above which a signal is considered to exhibit oscillatory behavior.
     
-      Returns
+    Returns
       -------
       binned_mzs : list of float
           All binned m/z values observed across the input spectra.
@@ -225,7 +228,7 @@ def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_si
     return corrected_map, time_correct_spectra
         
 
-def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, rt_window=0.01):
+def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, rt_window=1):
     """
    Main pipeline for detecting and correcting oscillatory artifacts in an MS data file.
 
@@ -255,11 +258,22 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, 
    save_as : str
        Path where the corrected mzML file will be saved.
 
+   plot : bool, optional (default=False)
+       Whether to generate plots of original and corrected signals for each oscillating m/z.
+
+   verbose : bool, optional (default=False)
+       Whether to print verbose output during processing.
+
+   mz_window : float, optional (default=0.01)
+       m/z tolerance window in Da for binning and detection of oscillating signals.
+
+   rt_window : float, optional (default=1)
+       Retention time window in seconds for frequency analysis and XIC smoothing.
+
    Returns
    -------
-   None
-       The corrected mzML file is written to disk. Execution times for major steps
-       are printed to the console for profiling/debugging purposes.
+   bool
+       True if corrections were applied and the corrected file was saved, False if no oscillations were detected (original file saved).
    """
     
     start_time=time.time()

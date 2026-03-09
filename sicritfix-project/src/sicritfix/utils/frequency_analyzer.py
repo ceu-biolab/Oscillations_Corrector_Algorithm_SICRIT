@@ -171,7 +171,7 @@ def apply_polynomial_regression(rts, rt_freqs, local_freqs, freq_deg=2):
     
     return phase 
 
-def obtain_freq_from_signal(rt_array, mz_array, intensity_array, rt_window, window_size=70, mz_ref=922.098, mz_tol=0.1):
+def obtain_freq_from_signal(rt_array, mz_array, intensity_array, rt_window, window_scan_size=70, mz_ref=922.098, mz_tol=0.1):
     """
     Estimates the local frequency and phase of oscillations from a given reference m/z signal.
 
@@ -208,7 +208,7 @@ def obtain_freq_from_signal(rt_array, mz_array, intensity_array, rt_window, wind
     
     
     sampling_interval = np.mean(np.diff(rt_array))
-    rt_freqs, local_freqs_ref = local_frequencies_with_fft(xic, rt_array, window_size, sampling_interval)
+    rt_freqs, local_freqs_ref = local_frequencies_with_fft(xic, rt_array, window_scan_size, sampling_interval)
     phase_ref=apply_polynomial_regression(rt_array, rt_freqs, local_freqs_ref)
 
     return local_freqs_ref, phase_ref

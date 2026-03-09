@@ -75,7 +75,7 @@ def correct_oscillations(
     phase_ref,
     local_freqs_ref,
     target_mz,
-    rt_window,
+    rt_window=1,
     mz_tol=0.01,
     window_size=70,
 ):
@@ -107,7 +107,14 @@ def correct_oscillations(
        target_mz : float
            The m/z value for which the oscillation correction is applied.
     
-       window_size : int, optional (default=70)
+        rt_window : float, optional (default=1)
+            Retention time window in seconds for smoothing the XIC. If 0.01, no smoothing is applied.
+
+        mz_tol : float, optional (default=0.01)
+            Tolerance window around the target m/z in Da. Peaks within 
+            [target_mz - mz_tol, target_mz + mz_tol] will be included.
+        
+        window_size : int, optional (default=70)
            The size of the window (in scans) used for extracting the XIC 
            around the target m/z.
     

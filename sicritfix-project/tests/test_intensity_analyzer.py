@@ -28,6 +28,7 @@ class TestIntensityAnalyzer(unittest.TestCase):
         self.rt_array = np.linspace(0, 99, self.n_scans)
         self.target_mz = 922.098
         self.mz_tol = 0.2
+        self.rt_window = 1
         self.sampling_interval = np.mean(np.diff(self.rt_array))
         self.local_freqs = np.full(20, 0.2)  # constant freq (Hz)
 
@@ -43,20 +44,20 @@ class TestIntensityAnalyzer(unittest.TestCase):
             self.intensity_array.append(intensities)
 
     def test_build_xic_shape(self):
-        xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.mz_tol)
+        xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.rt_window, self.mz_tol)
         self.assertEqual(xic.shape, self.rt_array.shape)
 
     def test_build_xic_contains_signal(self):
-        xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.mz_tol)
+        xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.rt_window, self.mz_tol)
         self.assertTrue(np.any(xic > 0), "XIC should contain non-zero signal near the target m/z")
 
     def test_get_amplitude_positive(self):
-        xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.mz_tol)
+        xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.rt_window, self.mz_tol)
         amplitude = get_amplitude(self.target_mz, xic, self.rt_array, self.local_freqs, self.sampling_interval)
         self.assertGreater(amplitude, 0, "Amplitude should be greater than zero for meaningful signal")
 
     def test_get_amplitude_stability(self):
-        xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.mz_tol)
+        xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.rt_window, self.mz_tol)
         amp1 = get_amplitude(self.target_mz, xic, self.rt_array, self.local_freqs, self.sampling_interval)
         amp2 = get_amplitude(self.target_mz, xic, self.rt_array, self.local_freqs, self.sampling_interval)
         self.assertAlmostEqual(amp1, amp2, places=5, msg="Amplitude should be stable across identical input")

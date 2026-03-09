@@ -41,7 +41,7 @@ __copyright__ = "GPL License version 3"
 
 import numpy as np
 
-def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=0.01, mz_tol=0.01):
+def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=1, mz_tol=0.01):
     """
     Builds an Extracted Ion Chromatogram (XIC) for a target m/z value.
 
@@ -65,8 +65,11 @@ def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=0.01, mz
     target_mz : float
         The m/z value of interest to extract the chromatogram for.
 
-    mz_tol : float, optional (default=0.1)
-        Tolerance window around the target m/z. Peaks within 
+    rt_window : float, optional (default=1)
+        Retention time window in seconds for smoothing the XIC. If 0.01, no smoothing is applied.
+
+    mz_tol : float, optional (default=0.01)
+        Tolerance window around the target m/z in Da. Peaks within 
         [target_mz - mz_tol, target_mz + mz_tol] will be included.
 
     Returns

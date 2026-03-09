@@ -58,7 +58,7 @@ Both single files and folders are supported.
 Run the tool with an input file:
 
 ```bash
-python sicritfix.py input_file.mzXML --output corrected.mzML --overwrite
+sicritfix input_file.mzXML --output corrected.mzML --overwrite
 ```
 If no --output is provided, the tool will automatically generate a filename by appending _corrected.mzML.
 

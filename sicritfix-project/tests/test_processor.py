@@ -48,6 +48,8 @@ class TestProcessor(unittest.TestCase):
 
         self.mz_array = [np.array([self.osc_mz, 150.0]) for _ in range(50)]
         self.intensity_array = [np.array([osc_signal[i], flat_signal[i]]) for i in range(50)]
+        self.mz_window = 0.01
+        self.rt_window = 1
 
         self.input_map = oms.MSExperiment()
         for i, rt in enumerate(self.rt_array):
@@ -59,8 +61,8 @@ class TestProcessor(unittest.TestCase):
 
     def test_detect_oscillating_mzs(self):
         _, oscillating_mzs, _ = detect_oscillating_mzs(
-            self.rt_array, self.mz_array, self.intensity_array,
-            mz_bin_size=0.01, min_occurrences=5, power_threshold=0.05
+            self.rt_array, self.mz_array, self.intensity_array, self.mz_window, self.rt_window,
+            min_occurrences=5, power_threshold=0.05
         )
         self.assertIn(round(self.osc_mz, 2), oscillating_mzs)
 

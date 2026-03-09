@@ -1,9 +1,9 @@
-name: oscilations_env
+name: sicritfix
 channels:
   - conda-forge
   - bioconda
 dependencies:
-  - python=3.11
+  - python>=3.11,<3.12
   - pip
   - numpy>=2.0,<3
   - scipy>=1.13
