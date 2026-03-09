@@ -20,12 +20,12 @@ def main():
     
     parser.add_argument(
         "--mz_window", type=float, default=0.01,
-        help="MZ window to calculate the different amplitude in each mz window"
+        help="MZ window to calculate the different amplitude in each mz window in Da (e.g., 0.01)"
     )
 
     parser.add_argument(
-        "--rt_window", type=float, default=0.01,
-        help="RT window to calculate the frequency of the oscillations"
+        "--rt_window", type=float, default=30,
+        help="RT window to calculate the frequency of the oscillations in seconds"
     )
     
     parser.add_argument(
