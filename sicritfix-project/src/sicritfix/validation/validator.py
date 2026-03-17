@@ -4,6 +4,29 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import re
+
+def plot_xic_signal(rts, target_mz, xic, title_suffix="", output_jpg_path=None):
+    title = f"XIC for m/z = {target_mz} {title_suffix}".strip()
+    plt.figure(figsize=(10, 6))
+    plt.plot(rts, xic, linewidth=0.8)
+    plt.xlabel("Retention time (s)")
+    plt.ylabel("Intensity")
+    plt.title(title)
+    plt.grid(True)
+    plt.tight_layout()
+
+    if output_jpg_path is None:
+        safe_suffix = re.sub(r"[^A-Za-z0-9_.-]+", "_", title_suffix.strip()).strip("_")
+        filename = f"xic_{target_mz:.4f}"
+        if safe_suffix:
+            filename += f"_{safe_suffix}"
+        output_jpg_path = f"{filename}.jpg"
+
+    plt.savefig(output_jpg_path, format="jpg", dpi=300, bbox_inches="tight")
+    print(f"Saved XIC plot to: {output_jpg_path}")
+    plt.show()
+
 
 def export_xic_signals_2_csv(rts, xic_signals, modulated_signals, residual_signals, output_csv_path):
     """
@@ -57,7 +80,7 @@ def export_xic_signals_2_csv(rts, xic_signals, modulated_signals, residual_signa
     df_formatted.to_csv(output_csv_path, index=False, sep=';')
     print(f"Exportado CSV combinado a: {output_csv_path}")
     
-def plot_ms_experiment_3d(ms_experiment):
+def plot_ms_experiment_3d(ms_experiment, output_jpg_path=None):
     
     """
     Plot a 3D visualization of an MSExperiment object with retention time, m/z, and intensity.
@@ -118,9 +141,13 @@ def plot_ms_experiment_3d(ms_experiment):
     ax.set_title("3D MS Corrected Map (Color = Intensity)")
 
     plt.tight_layout()
+    if output_jpg_path is None:
+        output_jpg_path = "ms_experiment_3d.jpg"
+    plt.savefig(output_jpg_path, format="jpg", dpi=300, bbox_inches="tight")
+    print(f"Saved MS 3D plot to: {output_jpg_path}")
     plt.show()
 
-def plot_xic_from_map(ms_map, target_mz, mz_tol=0.01):
+def plot_xic_from_map(ms_map, target_mz, mz_tol=0.01, output_jpg_path=None):
     """
     Plot the Extracted Ion Chromatogram (XIC) for a specific m/z value from an MSExperiment.
 
@@ -156,13 +183,19 @@ def plot_xic_from_map(ms_map, target_mz, mz_tol=0.01):
                 rts.append(rt)
                 intensities.append(intensity)
                 break
+    plt.figure(figsize=(10, 6))
     plt.plot(rts, intensities)
     plt.xlabel("Retention Time (s)")
     plt.ylabel(f"Intensity at {target_mz} m/z")
     plt.title(f"XIC of {target_mz}")
+    plt.tight_layout()
+    if output_jpg_path is None:
+        output_jpg_path = f"xic_map_{target_mz:.4f}_tol_{mz_tol}.jpg"
+    plt.savefig(output_jpg_path, format="jpg", dpi=300, bbox_inches="tight")
+    print(f"Saved XIC-from-map plot to: {output_jpg_path}")
     plt.show()
 
-def plot_all(rts, target_mz, xic, modulated_signal, residual_signal):
+def plot_all(rts, target_mz, xic, modulated_signal, residual_signal, output_jpg_path=None):
     """
     Plot the original XIC, the modulated signal, and the residual signal for a specific m/z.
 
@@ -221,9 +254,13 @@ def plot_all(rts, target_mz, xic, modulated_signal, residual_signal):
     axs[1].set_ylim(y_min, y_max)
 
     plt.tight_layout()
+    if output_jpg_path is None:
+        output_jpg_path = f"all_signals_{target_mz:.4f}.jpg"
+    plt.savefig(output_jpg_path, format="jpg", dpi=300, bbox_inches="tight")
+    print(f"Saved combined signal plot to: {output_jpg_path}")
     plt.show()
     
-def plot_modulated_signal(rts, target_mz, modulated_signal):
+def plot_modulated_signal(rts, target_mz, modulated_signal, output_jpg_path=None):
     """
     Plot the modulated signal over retention time for a specific m/z.
 
@@ -256,6 +293,10 @@ def plot_modulated_signal(rts, target_mz, modulated_signal):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
+    if output_jpg_path is None:
+        output_jpg_path = f"modulated_signal_{target_mz:.4f}.jpg"
+    plt.savefig(output_jpg_path, format="jpg", dpi=300, bbox_inches="tight")
+    print(f"Saved modulated signal plot to: {output_jpg_path}")
     plt.show()
 
 def plot_residual_signal(rt_array, target_mz, residual_signal):

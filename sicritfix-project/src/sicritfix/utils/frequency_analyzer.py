@@ -41,6 +41,8 @@ import numpy as np
 from scipy.fftpack import fft
 from scipy.integrate import cumulative_trapezoid
 from sicritfix.utils.intensity_analyzer import build_xic
+from sicritfix.validation.validator import plot_xic_signal
+
 
 def calculate_freq(xic, sampling_interval=1.0):
     """
@@ -171,7 +173,7 @@ def apply_polynomial_regression(rts, rt_freqs, local_freqs, freq_deg=2):
     
     return phase 
 
-def obtain_freq_from_signal(rt_array, mz_array, intensity_array, rt_window, window_scan_size=70, mz_ref=922.098, mz_tol=0.1):
+def obtain_freq_from_signal(rt_array, mz_array, intensity_array, rt_window, window_scan_size=70, mz_ref=922.098, mz_window=0.1):
     """
     Estimates the local frequency and phase of oscillations from a given reference m/z signal.
 
@@ -190,11 +192,17 @@ def obtain_freq_from_signal(rt_array, mz_array, intensity_array, rt_window, wind
     intensity_array : np.ndarray
         Intensity values corresponding to each m/z and retention time.
 
+    rt_window : float
+        Retention time window (in seconds) used to extract the XIC around the reference m/z value.
+
     window_scan_size : int, optional (default=70)
         Size of the sliding window (in scans) used for local frequency estimation.
 
     mz_ref : float, optional (default=922.098)
         Reference m/z value used to extract the XIC for frequency analysis.
+    
+    mz_window : float, optional (default=0.1)
+        m/z tolerance window (in Da) around the reference m/z for extracting the XIC. Peaks within [mz_ref - mz_window, mz_ref + mz_window] will be included in the analysis.
 
     Returns
     -------
@@ -204,8 +212,12 @@ def obtain_freq_from_signal(rt_array, mz_array, intensity_array, rt_window, wind
     phase_ref : np.ndarray
         Smoothed phase (in radians) derived from polynomial regression on frequency data.
     """
-    xic=build_xic(mz_array, intensity_array, rt_array, target_mz=mz_ref, rt_window=rt_window, mz_tol=mz_tol)
+    xic=build_xic(mz_array, intensity_array, rt_array, target_mz=mz_ref, rt_window=rt_window, mz_window=mz_window)
+
     
+    plot_xic_signal(rt_array, mz_ref, xic, f"(mz_tol={mz_window} Da, rt_window={rt_window} s)")
+    
+
     
     sampling_interval = np.mean(np.diff(rt_array))
     rt_freqs, local_freqs_ref = local_frequencies_with_fft(xic, rt_array, window_scan_size=window_scan_size, sampling_interval=sampling_interval)

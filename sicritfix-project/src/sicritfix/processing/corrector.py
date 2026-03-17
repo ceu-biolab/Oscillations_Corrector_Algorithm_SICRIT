@@ -132,7 +132,7 @@ def correct_oscillations(
         rt_array,
         target_mz,
         rt_window,
-        mz_tol=mz_tol,
+        mz_window=mz_tol,
     )
     
 

@@ -9,7 +9,10 @@ def main():
         description="Correct oscillations in an mzML/mzXML file and output the corrected mzML."
     )
 
-    parser.add_argument("input", help="Path to input mzML file")
+    parser.add_argument(
+        "--input", required=True,
+        help="Path to input mzML/mzXML file to process or Path to a folder containing multiple mzML/mzXML files to process"
+        )
 
     parser.add_argument(
         "--output",
@@ -19,21 +22,15 @@ def main():
 
     
     parser.add_argument(
-        "--mz_window", type=float, default=0.01,
-        help="MZ window to calculate the different amplitude in each mz window in Da (e.g., 0.01)"
+        "--mz_window", type=float, default=0.1,
+        help="MZ window to calculate the different amplitude in each mz window in Da (e.g., 0.1)"
     )
 
     parser.add_argument(
         "--rt_window", type=float, default=5,
-        help="RT window to calculate the frequency of the oscillations in seconds"
+        help="RT window to calculate the frequency of the oscillations in seconds. "
     )
     
-    parser.add_argument(
-        "--input_dir",
-        help="Path to a folder containing multiple mzXML/mzML files to process"
-    )
-
-
     parser.add_argument(
         "--overwrite", action="store_true", help="Overwrite output file if it exists"
     )
@@ -50,60 +47,85 @@ def main():
         print(f" Input file not found: {args.input}")
         return
 
-    # Auto-generate output filename if not provided
-    if args.output:
-        output_path = args.output
-    else:
-        base, ext = os.path.splitext(args.input)
-        output_path = base + "_corrected" + ext
+    input_path = args.input
 
-    if os.path.exists(output_path) and not args.overwrite:
-        print(f" Output file exists: {output_path}")
-        print(" Use --overwrite to allow replacing it.")
+    if not os.path.exists(input_path):
+        print(f"Input path not found: {input_path}")
         return
 
-    if os.path.exists(output_path) and args.overwrite:
-        print(f" Removing existing file: {output_path}")
-        os.remove(output_path)
+    files_to_process = []
+
+    # Case 1: single file
+    if os.path.isfile(input_path):
+
+        if not input_path.lower().endswith((".mzml", ".mzxml")):
+            print("Input file must be .mzML or .mzXML")
+            return
+
+        files_to_process = [input_path]
+
+    # Case 2: directory
+    elif os.path.isdir(input_path):
+
+        files_to_process = [
+            os.path.join(input_path, f)
+            for f in os.listdir(input_path)
+            if f.lower().endswith((".mzml", ".mzxml"))
+        ]
+
+        if not files_to_process:
+            print("No mzML/mzXML files found in directory.")
+            return
+
+    else:
+        print("Input path must be a file or directory.")
+        return
 
     if args.verbose:
         print(" Starting processing")
         print(f" Input: {args.input}")
-        print(f" Output: {output_path}")
-        
+
     if args.plot:
         print(" Plotting is ENABLED")
-        
-    if args.input_dir:
-        # process folder
-        for fname in os.listdir(args.input_dir):
-            if fname.lower().endswith((".mzxml", ".mzml")):
-                input_path = os.path.join(args.input_dir, fname)
-                base, ext = os.path.splitext(input_path)
+
+    for file_path in files_to_process:
+
+        if args.output and len(files_to_process) == 1:
+            output_path = args.output
+        else:
+            base, ext = os.path.splitext(file_path)
+            if os.path.isfile(input_path):
+                output_path = base + "_corrected" + ext
+            else:
                 output_path = base + "_corrected.mzML"
-                print(f"File: {os.path.basename(args.input_dir)} loaded correctly")
-                process_file(
-                    file_path=input_path,
-                    save_as=output_path,
-                    plot=args.plot,
-                    verbose=args.verbose,
-                    mz_window=args.mz_window,
-                    rt_window=args.rt_window,
-               )
-    else:
-        
-        # Run the processing function
-        file_corrected=process_file(
-            file_path=args.input,
+
+        if os.path.exists(output_path) and not args.overwrite:
+            print(f"Output exists: {output_path}")
+            print("Use --overwrite to replace it.")
+            continue
+
+        if os.path.exists(output_path) and args.overwrite:
+            print(f" Removing existing file: {output_path}")
+            os.remove(output_path)
+
+        if args.verbose:
+            print("Processing file:")
+            print(f"  Input : {file_path}")
+            print(f"  Output: {output_path}")
+
+        file_corrected = process_file(
+            file_path=file_path,
             save_as=output_path,
             plot=args.plot,
             verbose=args.verbose,
             mz_window=args.mz_window,
             rt_window=args.rt_window,
         )
-    
-    
-    if file_corrected:
-        print(f" Oscillations were detected and corrected. Corrected file saved to: {output_path}")
-    else:
-        print(f" No oscillations detected. Original file saved to: {output_path}")
+
+        if file_corrected:
+            print(f"Oscillations detected and corrected → {output_path}")
+        else:
+            print(f"No oscillations detected → {output_path}")
+
+if __name__ == "__main__":
+    main()

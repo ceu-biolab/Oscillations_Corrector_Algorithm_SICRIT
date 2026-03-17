@@ -53,7 +53,7 @@ from sicritfix.utils.intensity_analyzer import build_xic
 from sicritfix.validation.validator import plot_original_and_corrected
 
 
-def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window=0.01, rt_window=5, min_occurrences=10, power_threshold=0.15):
+def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window=0.1, rt_window=5, min_occurrences=10, power_threshold=0.15):
     
     """
     Detects m/z values exhibiting oscillatory behavior based on their XICs using FFT analysis.
@@ -73,7 +73,7 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window=0.01, 
     intensity_array : list of np.ndarray
         List of intensity arrays corresponding to each m/z array per scan.
     
-    mz_window : float, optional (default=0.01)
+    mz_window : float, optional (default=0.1)
         Size of the bin used to group close m/z values for counting and detection.
     
     rt_window : float, optional (default=5)
@@ -123,7 +123,7 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window=0.01, 
             rt_array,
             target_mz=mz,
             rt_window=rt_window,
-            mz_tol=mz_window,
+            mz_window=mz_window,
         )
         
         if(np.sum(xic) < 1e-5):
@@ -228,7 +228,7 @@ def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_si
     return corrected_map, time_correct_spectra
         
 
-def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, rt_window=5):
+def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.1, rt_window=5):
     """
    Main pipeline for detecting and correcting oscillatory artifacts in an MS data file.
 
@@ -264,7 +264,7 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, 
    verbose : bool, optional (default=False)
        Whether to print verbose output during processing.
 
-   mz_window : float, optional (default=0.01)
+   mz_window : float, optional (default=0.1)
        m/z tolerance window in Da for binning and detection of oscillating signals.
 
    rt_window : float, optional (default=5)
@@ -309,7 +309,7 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.01, 
         mz_array,
         intensity_array,
         rt_window=rt_window,
-        mz_tol=mz_window,
+        mz_window=mz_window,
     )
     
             
