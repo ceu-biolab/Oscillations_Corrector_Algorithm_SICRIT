@@ -44,7 +44,7 @@ import numpy as np
 from sicritfix.utils.intensity_analyzer import build_xic, get_amplitude
 
 
-def generate_modulated_signal(amplitude, phase):
+def generate_modulated_signal(amplitude, phase, offset=0.0):
     """
     Generates a modulated sinusoidal signal for oscillation correction.
     Creates a sine wave based on the provided amplitude and phase.
@@ -58,13 +58,16 @@ def generate_modulated_signal(amplitude, phase):
     phase : np.ndarray or float
         The phase(s) (in radians) of the sinusoidal oscillation.
 
+    offset : np.ndarray or float, optional
+        Baseline offset added to the sinusoid for visualization/model centering.
+
     Returns
     -------
     modulated_signal : np.ndarray or float
         The resulting modulated sinusoidal signal.
     """
     
-    modulated_signal = amplitude * np.sin(phase) 
+    modulated_signal = offset + amplitude * np.sin(phase)
     
     return modulated_signal
     
@@ -76,7 +79,8 @@ def correct_oscillations(
     local_freqs_ref,
     target_mz,
     rt_window=5,
-    mz_tol=0.01
+    mz_tol=0.01,
+    debug_signals=False,
 ):
     """
     Corrects oscillations in an extracted ion chromatogram (XIC) by subtracting a
@@ -141,7 +145,7 @@ def correct_oscillations(
     
     
     # 3. Amplitude at each m/z
-    amplitude=get_amplitude(target_mz, xic, rt_array, local_freqs_ref, sampling_interval)
+    amplitude=get_amplitude(xic, local_freqs_ref, sampling_interval)
     
     
     # 4. Creation of the modulated signal

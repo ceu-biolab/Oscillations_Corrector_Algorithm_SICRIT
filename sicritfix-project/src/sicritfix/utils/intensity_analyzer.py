@@ -109,23 +109,110 @@ def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=0.01, mz
     smoothed_xic = np.convolve(xic, kernel, mode="same")
     return smoothed_xic
 
-def get_amplitude(target_mz, xic, rt_array, local_freqs, sampling_interval):
+def get_amplitude(
+    xic,
+    local_freqs,
+    sampling_interval,
+    baseline_quantile=0.2,
+    summary_percentile=75,
+):
+    """
+    Estimates oscillation amplitude from an XIC using robust local windows.
+
+    The function first estimates a slow baseline with a rolling lower-quantile
+    envelope, detrends the XIC, and then measures local amplitudes over windows
+    defined by local oscillation periods. Local amplitudes are summarized with
+    a configurable high percentile.
+
+    Parameters
+    ----------
+    xic : np.ndarray
+        Extracted ion chromatogram for a known m/z value, representing intensity across retention time.
     
+    local_freqs : np.ndarray
+        Array of local frequency estimates (in Hz) across the signal.
+    
+    sampling_interval : float
+        Time interval between samples in the XIC (in seconds).
+
+    baseline_quantile : float, optional (default=0.2)
+        Quantile used to estimate the slow baseline (0 < q < 1).
+
+    summary_percentile : float, optional (default=75)
+        Percentile used to summarize local amplitudes into a single value.
+
+    Returns
+    -------
+    amplitude : float
+        Estimated oscillation amplitude.
+    """
+    xic = np.asarray(xic, dtype=float)
+    local_freqs = np.asarray(local_freqs, dtype=float)
+
+    if xic.size == 0 or sampling_interval <= 0:
+        return 0.0
+
+    valid_freqs = local_freqs[np.isfinite(local_freqs) & (local_freqs > 0)]
+    if valid_freqs.size == 0:
+        return 0.0
+
+    def _rolling_quantile(signal, window_points, quantile):
+        if window_points <= 1:
+            return signal.copy()
+        half = window_points // 2
+        padded = np.pad(signal, (half, half), mode="edge")
+        windows = np.lib.stride_tricks.sliding_window_view(padded, window_shape=window_points)
+        return np.quantile(windows, quantile, axis=-1)
+
+    median_freq = float(np.median(valid_freqs))
+    period_points = max(3, int(round(1.0 / (median_freq * sampling_interval))))
+
+    baseline_window = max(25, period_points * 5)
+    if baseline_window % 2 == 0:
+        baseline_window += 1
+
+    baseline = _rolling_quantile(xic, baseline_window, baseline_quantile)
+    detrended = xic - baseline
+
+    local_amplitudes = []
+    for i, freq in enumerate(local_freqs):
+        if not np.isfinite(freq) or freq <= 0:
+            continue
+
+        period = max(3, int(round(1.0 / (freq * sampling_interval))))
+        center = i * int(len(xic) / max(1, len(local_freqs)))
+        start = int(max(0, center - period / 2))
+        end = int(min(len(xic), center + period / 2))
+        window = detrended[start:end]
+
+        if window.size < 5:
+            continue
+
+        p05, p95 = np.percentile(window, [5, 95])
+        clipped = np.clip(window, p05, p95)
+        p10, p90 = np.percentile(clipped, [10, 90])
+        local_amplitude = (p90 - p10) / 2.0
+        local_amplitudes.append(local_amplitude)
+
+    if not local_amplitudes:
+        p10, p90 = np.percentile(detrended, [10, 90])
+        return float(max(0.0, (p90 - p10) / 2.0))
+
+    amplitude = float(np.percentile(local_amplitudes, summary_percentile))
+    return max(0.0, amplitude)
+
+
+
+def get_amplitude_by_local_freqs(xic, local_freqs, sampling_interval):    
     """
     Estimates the amplitude of a signal in an extracted ion chromatogram (XIC)
-    using local frequency information and percentile-based statistics.The final amplitude is taken 
+    using local frequency information and percentile-based statistics. The final amplitude is taken 
     as the 75th percentile of the computed local amplitudes.
 
     Parameters
     ----------
-    target_mz : float
-        Target mass-to-charge ratio (m/z) of the ion of interest.
-    
     xic : np.ndarray
-        Extracted ion chromatogram.
-    
-    rt_array : np.ndarray
-        Retention time array corresponding to the XIC.
+        Extracted ion chromatogram for a known m/z value, representing intensity across retention time.
     
     local_freqs : np.ndarray
         Array of local frequency estimates (in Hz) across the signal.

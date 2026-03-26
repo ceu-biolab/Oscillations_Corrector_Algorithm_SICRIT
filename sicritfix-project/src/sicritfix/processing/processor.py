@@ -50,7 +50,14 @@ from sicritfix.processing.corrector import correct_oscillations
 from sicritfix.io.io import load_file
 from sicritfix.utils.frequency_analyzer import obtain_freq_from_signal
 from sicritfix.utils.intensity_analyzer import build_xic
-from sicritfix.validation.validator import plot_original_and_corrected
+from sicritfix.validation.validator import (
+    plot_all,
+    plot_original_and_corrected,
+    plot_original_and_modulated,
+    plot_modulated_signal,
+    plot_residual_signal,
+    plot_detected_mzs,
+)
 
 
 def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window=0.1, rt_window=5, min_occurrences=10, power_threshold=0.15):
@@ -100,9 +107,11 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window=0.1, r
     start_time=time.time()
     
     #1. Binning of all m/z values across all spectra
+    binned_mzs = []
     for mzs in mz_array:
-        binned_mzs=np.round(mzs/mz_window)*mz_window
-        for mz in binned_mzs:
+        binned_mzs_scan = np.round(mzs / mz_window) * mz_window
+        binned_mzs.extend(binned_mzs_scan.tolist())
+        for mz in binned_mzs_scan:
             mz_counts[mz]+=1
             
     #2. Selection of the ones that appear in enough spectra
@@ -113,7 +122,7 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window=0.1, r
      
     #3. Detection of oscillating mzs
     oscillating_mzs=[]
-    
+    rt_window_for_reference_mass = 0.1
 
         #3.1 Analysis of XIC for each m/z
     for mz in candidate_mzs:
@@ -303,18 +312,20 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.1, r
         
     # 2. Oscillations' correction
             
-        #2.1 Extract freq from signal of ref: m/z=922.098  
+        #2.1 Extract freq from signal of ref: m/z=922.098. Use mz_tolerance of 0.1 Da 
     local_freqs_ref, phase_ref = obtain_freq_from_signal(
         rts,
         mz_array,
         intensity_array,
         rt_window=rt_window,
-        mz_window=mz_window,
+        mz_window=0.1,
     )
     
             
         #2.2 Detect mzs to correct
     binned_mzs, oscillating_mzs, time_detect_oscillating_mzs=detect_oscillating_mzs(rts, mz_array, intensity_array, mz_window, rt_window)
+    if plot:
+        plot_detected_mzs(binned_mzs, oscillating_mzs, mz_window=mz_window)
     
             
     if not oscillating_mzs:
@@ -330,11 +341,10 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.1, r
     xic_signals = {}
     modulated_signals = {}#Dict[target_mz: float, modulated: np.ndarray]
     residual_signals = {}#Dict[target_mz: float, residual: np.ndarray]
-                   
             
     print("<<< Correcting file. ") 
     for target_mz in oscillating_mzs:
-                
+        
         xic, modulated_signal, residual_signal = correct_oscillations(
             rts,
             mz_array,
@@ -344,6 +354,7 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.1, r
             target_mz,
             rt_window=rt_window,
             mz_tol=mz_window,
+            debug_signals=verbose,
         )
                 
         xic_signals[target_mz] = xic
@@ -351,7 +362,8 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.1, r
         residual_signals[target_mz] = residual_signal
                 
         if plot:
-            plot_original_and_corrected(rts, target_mz, xic, residual_signal)
+            plot_all(rts, target_mz, xic, modulated_signal, residual_signal)
+            
             
             
     # 3. Apply changes (corrections) to spectra

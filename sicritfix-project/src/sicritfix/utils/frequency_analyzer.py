@@ -41,7 +41,11 @@ import numpy as np
 from scipy.fftpack import fft
 from scipy.integrate import cumulative_trapezoid
 from sicritfix.utils.intensity_analyzer import build_xic
-from sicritfix.validation.validator import plot_xic_signal
+from sicritfix.validation.validator import (
+    plot_xic_signal,
+    plot_local_frequencies,
+    plot_phase_signal,
+)
 
 
 def calculate_freq(xic, sampling_interval=1.0):
@@ -217,10 +221,11 @@ def obtain_freq_from_signal(rt_array, mz_array, intensity_array, rt_window, wind
     
     plot_xic_signal(rt_array, mz_ref, xic, f"(mz_tol={mz_window} Da, rt_window={rt_window} s)")
     
-
-    
     sampling_interval = np.mean(np.diff(rt_array))
+
     rt_freqs, local_freqs_ref = local_frequencies_with_fft(xic, rt_array, window_scan_size=window_scan_size, sampling_interval=sampling_interval)
     phase_ref=apply_polynomial_regression(rt_array, rt_freqs, local_freqs_ref)
+    plot_local_frequencies(rt_freqs, local_freqs_ref, target_mz=mz_ref)
+    plot_phase_signal(rt_array, phase_ref, target_mz=mz_ref)
 
     return local_freqs_ref, phase_ref
