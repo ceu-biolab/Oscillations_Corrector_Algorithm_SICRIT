@@ -5,6 +5,15 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import re
+import os
+
+
+def _resolve_output_path(output_jpg_path, default_filename):
+    out_dir = "output_jpg"
+    os.makedirs(out_dir, exist_ok=True)
+    if output_jpg_path is None:
+        return os.path.join(out_dir, default_filename)
+    return output_jpg_path
 
 def plot_xic_signal(rts, target_mz, xic, title_suffix="", output_jpg_path=None):
     title = f"XIC for m/z = {target_mz} {title_suffix}".strip()
@@ -21,11 +30,78 @@ def plot_xic_signal(rts, target_mz, xic, title_suffix="", output_jpg_path=None):
         filename = f"xic_{target_mz:.4f}"
         if safe_suffix:
             filename += f"_{safe_suffix}"
-        output_jpg_path = f"{filename}.jpg"
+        output_jpg_path = _resolve_output_path(None, f"{filename}.jpg")
 
     plt.savefig(output_jpg_path, format="jpg", dpi=300, bbox_inches="tight")
     print(f"Saved XIC plot to: {output_jpg_path}")
-    plt.show()
+    plt.close()
+
+
+def plot_local_frequencies(rt_freqs, local_freqs_ref, target_mz=None, output_jpg_path=None):
+    plt.figure(figsize=(10, 6))
+    plt.plot(rt_freqs, local_freqs_ref, "o-", linewidth=0.9, markersize=3)
+    plt.xlabel("Retention time (s)")
+    plt.ylabel("Local dominant frequency (Hz)")
+    if target_mz is None:
+        plt.title("Local frequency profile over retention time")
+    else:
+        plt.title(f"Local frequency profile over retention time (m/z = {target_mz})")
+    plt.grid(True)
+    plt.tight_layout()
+    output_jpg_path = _resolve_output_path(output_jpg_path, "local_frequencies_ref.jpg")
+    plt.savefig(output_jpg_path, format="jpg", dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def plot_phase_signal(rt_array, phase_ref, target_mz=None, output_jpg_path=None):
+    plt.figure(figsize=(10, 6))
+    plt.plot(rt_array, phase_ref, linewidth=1.0)
+    plt.xlabel("Retention time (s)")
+    plt.ylabel("Phase (radians)")
+    if target_mz is None:
+        plt.title("Accumulated phase over retention time")
+    else:
+        plt.title(f"Accumulated phase over retention time (m/z = {target_mz})")
+    plt.grid(True)
+    plt.tight_layout()
+    output_jpg_path = _resolve_output_path(output_jpg_path, "phase_ref.jpg")
+    plt.savefig(output_jpg_path, format="jpg", dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def plot_detected_mzs(binned_mzs, oscillating_mzs, mz_window=0.1, output_jpg_path=None):
+    binned_mzs = np.asarray(binned_mzs, dtype=float)
+    oscillating_mzs = np.asarray(oscillating_mzs, dtype=float)
+    if binned_mzs.size == 0:
+        return
+
+    mz_values, counts = np.unique(binned_mzs, return_counts=True)
+    oscillating_set = set(np.round(oscillating_mzs, 3))
+    oscillating_mask = np.array([round(v, 3) in oscillating_set for v in mz_values])
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(mz_values, counts, color="lightgray", linewidth=1.0, label="All binned m/z counts")
+    if np.any(oscillating_mask):
+        plt.scatter(
+            mz_values[oscillating_mask],
+            counts[oscillating_mask],
+            color="crimson",
+            s=22,
+            label="Detected oscillating m/z bins",
+            zorder=3,
+        )
+    plt.xlabel("Binned m/z")
+    plt.ylabel("Occurrence count across scans")
+    plt.title(
+        f"Detection summary: binned m/z distribution (bin={mz_window} Da), "
+        f"oscillating={len(oscillating_mzs)}"
+    )
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    output_jpg_path = _resolve_output_path(output_jpg_path, "detected_oscillating_mzs.jpg")
+    plt.savefig(output_jpg_path, format="jpg", dpi=300, bbox_inches="tight")
+    plt.close()
 
 
 def export_xic_signals_2_csv(rts, xic_signals, modulated_signals, residual_signals, output_csv_path):

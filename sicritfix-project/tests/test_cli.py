@@ -27,7 +27,7 @@ class TestCli(unittest.TestCase):
                         save_as=os.path.join(tmp_dir, "input_corrected.mzML"),
                         plot=False,
                         verbose=False,
-                        mz_window=0.01,
+                        mz_window=0.1,
                         rt_window=5,
                     )
 

@@ -339,8 +339,8 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.1, r
            
         #2.3 Call to the correcting function in corrector.py
     xic_signals = {}
-    modulated_signals = {}#Dict[target_mz: float, modulated: np.ndarray]
-    residual_signals = {}#Dict[target_mz: float, residual: np.ndarray]
+    modulated_signals = {} #Dict[target_mz: float, modulated: np.ndarray]
+    residual_signals = {} #Dict[target_mz: float, residual: np.ndarray]
             
     print("<<< Correcting file. ") 
     for target_mz in oscillating_mzs:

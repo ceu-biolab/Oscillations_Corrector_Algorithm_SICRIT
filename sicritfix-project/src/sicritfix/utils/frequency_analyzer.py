@@ -164,7 +164,17 @@ def apply_polynomial_regression(rts, rt_freqs, local_freqs, freq_deg=2):
         Accumulated phase (in radians) computed by integrating the smoothed frequency
         over time.
     """
-    rts = np.array(rts)
+    rts = np.array(rts, dtype=float)
+    rt_freqs = np.array(rt_freqs, dtype=float)
+    local_freqs = np.array(local_freqs, dtype=float)
+
+    if rts.size == 0:
+        return np.array([], dtype=float)
+
+    # No local frequency estimates -> no oscillatory phase progression.
+    if rt_freqs.size == 0 or local_freqs.size == 0:
+        return np.zeros_like(rts, dtype=float)
+
     t = (rts - rts[0])
     
     freq_interp = np.interp(rts, rt_freqs, local_freqs)

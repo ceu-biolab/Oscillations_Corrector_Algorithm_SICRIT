@@ -16,7 +16,14 @@ Unit tests for intensity_analyzer.py
 
 import unittest
 import numpy as np
-from sicritfix.utils.intensity_analyzer import build_xic, get_amplitude
+from sicritfix.utils.intensity_analyzer import (
+    build_xic,
+    get_amplitude,
+    get_amplitude_by_q75,
+    get_amplitude_by_q90,
+    get_amplitude_by_global_trimmed_detrended,
+    get_amplitude_by_local_robust_detrended,
+)
 
 
 class TestIntensityAnalyzer(unittest.TestCase):
@@ -53,14 +60,26 @@ class TestIntensityAnalyzer(unittest.TestCase):
 
     def test_get_amplitude_positive(self):
         xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.rt_window, self.mz_tol)
-        amplitude = get_amplitude(self.target_mz, xic, self.rt_array, self.local_freqs, self.sampling_interval)
+        amplitude = get_amplitude(xic, self.local_freqs, self.sampling_interval)
         self.assertGreater(amplitude, 0, "Amplitude should be greater than zero for meaningful signal")
 
     def test_get_amplitude_stability(self):
         xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.rt_window, self.mz_tol)
-        amp1 = get_amplitude(self.target_mz, xic, self.rt_array, self.local_freqs, self.sampling_interval)
-        amp2 = get_amplitude(self.target_mz, xic, self.rt_array, self.local_freqs, self.sampling_interval)
+        amp1 = get_amplitude(xic, self.local_freqs, self.sampling_interval)
+        amp2 = get_amplitude(xic, self.local_freqs, self.sampling_interval)
         self.assertAlmostEqual(amp1, amp2, places=5, msg="Amplitude should be stable across identical input")
+
+    def test_alternative_amplitude_methods_non_negative(self):
+        xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.rt_window, self.mz_tol)
+        amps = [
+            get_amplitude_by_q75(xic, self.local_freqs, self.sampling_interval),
+            get_amplitude_by_q90(xic, self.local_freqs, self.sampling_interval),
+            get_amplitude_by_global_trimmed_detrended(xic, self.local_freqs, self.sampling_interval),
+            get_amplitude_by_local_robust_detrended(xic, self.local_freqs, self.sampling_interval),
+            get_amplitude(xic, self.local_freqs, self.sampling_interval, method="q75"),
+            get_amplitude(xic, self.local_freqs, self.sampling_interval, method="q90"),
+        ]
+        self.assertTrue(all(a >= 0 for a in amps))
 
 
 if __name__ == "__main__":

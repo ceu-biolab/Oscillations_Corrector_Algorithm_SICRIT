@@ -109,7 +109,99 @@ def build_xic(mz_array, intensity_array, rt_array, target_mz, rt_window=0.01, mz
     smoothed_xic = np.convolve(xic, kernel, mode="same")
     return smoothed_xic
 
-def get_amplitude(
+def _rolling_quantile(signal, window_points, quantile):
+    if window_points <= 1:
+        return signal.copy()
+    half = window_points // 2
+    padded = np.pad(signal, (half, half), mode="edge")
+    windows = np.lib.stride_tricks.sliding_window_view(padded, window_shape=window_points)
+    return np.quantile(windows, quantile, axis=-1)
+
+
+def _estimate_period_points(local_freqs, sampling_interval, default_points=70):
+    local_freqs = np.asarray(local_freqs, dtype=float)
+    valid_freqs = local_freqs[np.isfinite(local_freqs) & (local_freqs > 0)]
+    if valid_freqs.size == 0 or sampling_interval <= 0:
+        return default_points
+    median_freq = float(np.median(valid_freqs))
+    return max(3, int(round(1.0 / (median_freq * sampling_interval))))
+
+
+def get_amplitude_by_q75(xic, local_freqs, sampling_interval):
+    """
+    Legacy estimator: local-window IQR amplitude summarized by Q75.
+
+    Parameters
+    ----------
+    xic : np.ndarray
+        Extracted ion chromatogram.
+    local_freqs : np.ndarray
+        Local frequency estimates (Hz).
+    sampling_interval : float
+        Time between samples (seconds).
+
+    Returns
+    -------
+    float
+        Estimated oscillation amplitude.
+    """
+    xic = np.asarray(xic, dtype=float)
+    local_freqs = np.asarray(local_freqs, dtype=float)
+    if xic.size == 0 or sampling_interval <= 0:
+        return 0.0
+
+    local_amplitudes = []
+    for i, freq in enumerate(local_freqs):
+        if not np.isfinite(freq) or freq <= 0:
+            continue
+
+        period = max(3, int(round(1.0 / (freq * sampling_interval))))
+        center = i * int(len(xic) / max(1, len(local_freqs)))
+        start = int(max(0, center - period / 2))
+        end = int(min(len(xic), center + period / 2))
+        window = xic[start:end]
+        if window.size < 5:
+            continue
+
+        q25, q75 = np.percentile(window, [25, 75])
+        local_amplitudes.append((q75 - q25) / 2.0)
+
+    if not local_amplitudes:
+        return 0.0
+    return float(max(0.0, np.percentile(local_amplitudes, 75)))
+
+
+def get_amplitude_by_q90(xic, local_freqs, sampling_interval):
+    """
+    More aggressive legacy estimator: same local-IQR values summarized by Q90.
+    """
+    xic = np.asarray(xic, dtype=float)
+    local_freqs = np.asarray(local_freqs, dtype=float)
+    if xic.size == 0 or sampling_interval <= 0:
+        return 0.0
+
+    local_amplitudes = []
+    for i, freq in enumerate(local_freqs):
+        if not np.isfinite(freq) or freq <= 0:
+            continue
+
+        period = max(3, int(round(1.0 / (freq * sampling_interval))))
+        center = i * int(len(xic) / max(1, len(local_freqs)))
+        start = int(max(0, center - period / 2))
+        end = int(min(len(xic), center + period / 2))
+        window = xic[start:end]
+        if window.size < 5:
+            continue
+
+        q25, q75 = np.percentile(window, [25, 75])
+        local_amplitudes.append((q75 - q25) / 2.0)
+
+    if not local_amplitudes:
+        return 0.0
+    return float(max(0.0, np.percentile(local_amplitudes, 90)))
+
+
+def get_amplitude_by_local_robust_detrended(
     xic,
     local_freqs,
     sampling_interval,
@@ -156,16 +248,7 @@ def get_amplitude(
     if valid_freqs.size == 0:
         return 0.0
 
-    def _rolling_quantile(signal, window_points, quantile):
-        if window_points <= 1:
-            return signal.copy()
-        half = window_points // 2
-        padded = np.pad(signal, (half, half), mode="edge")
-        windows = np.lib.stride_tricks.sliding_window_view(padded, window_shape=window_points)
-        return np.quantile(windows, quantile, axis=-1)
-
-    median_freq = float(np.median(valid_freqs))
-    period_points = max(3, int(round(1.0 / (median_freq * sampling_interval))))
+    period_points = _estimate_period_points(local_freqs, sampling_interval)
 
     baseline_window = max(25, period_points * 5)
     if baseline_window % 2 == 0:
@@ -203,50 +286,66 @@ def get_amplitude(
 
 
 
-def get_amplitude_by_local_freqs(xic, local_freqs, sampling_interval):    
+def get_amplitude_by_global_trimmed_detrended(
+    xic,
+    local_freqs,
+    sampling_interval,
+    baseline_quantile=0.2,
+    low_percentile=10,
+    high_percentile=90,
+):
     """
-    Estimates the amplitude of a signal in an extracted ion chromatogram (XIC)
-    using local frequency information and percentile-based statistics. The final amplitude is taken 
-    as the 75th percentile of the computed local amplitudes.
-
-    Parameters
-    ----------
-    xic : np.ndarray
-        Extracted ion chromatogram for a known m/z value, representing intensity across retention time.
-    
-    local_freqs : np.ndarray
-        Array of local frequency estimates (in Hz) across the signal.
-    
-    sampling_interval : float
-        Time interval between samples in the XIC (in seconds).
-
-    Returns
-    -------
-    amplitude : float
-        Estimated amplitude of the signal, based on the 75th percentile
-        of the local amplitude estimates across all valid local frequencies.
+    Global robust estimator on detrended signal using trimmed range.
     """
-    
-    local_amplitudes=[]
-    
-    
-    for i, freq in enumerate (local_freqs):
-        
-        if freq<=0:
-            continue
-        
-        period=int(1/(freq*sampling_interval))
-        
-        center=i*int(len(xic) / len(local_freqs))
-        start=int(max(0, center-period/2))
-        end=int(min(len(xic), center+period/2))
-        window=xic[start:end]
-        
-        q25, q75 = np.percentile(window, [25, 75])
-        local_amplitude = (q75 - q25) / 2
-        local_amplitudes.append(local_amplitude)
-        
-        
-    amplitude = np.percentile(local_amplitudes, 75)
-    
-    return amplitude
+    xic = np.asarray(xic, dtype=float)
+    if xic.size == 0 or sampling_interval <= 0:
+        return 0.0
+
+    period_points = _estimate_period_points(local_freqs, sampling_interval)
+    baseline_window = max(25, period_points * 5)
+    if baseline_window % 2 == 0:
+        baseline_window += 1
+
+    baseline = _rolling_quantile(xic, baseline_window, baseline_quantile)
+    detrended = xic - baseline
+    low, high = np.percentile(detrended, [low_percentile, high_percentile])
+    return float(max(0.0, (high - low) / 2.0))
+
+
+def get_amplitude(
+    xic,
+    local_freqs,
+    sampling_interval,
+    method="local_robust_detrended",
+    **kwargs,
+):
+    """
+    Dispatch amplitude estimation using one of the supported methods.
+    """
+    method = str(method).strip().lower()
+    if method == "q75":
+        return get_amplitude_by_q75(xic, local_freqs, sampling_interval)
+    if method == "q90":
+        return get_amplitude_by_q90(xic, local_freqs, sampling_interval)
+    if method == "global_trimmed_detrended":
+        return get_amplitude_by_global_trimmed_detrended(
+            xic,
+            local_freqs,
+            sampling_interval,
+            baseline_quantile=kwargs.get("baseline_quantile", 0.2),
+            low_percentile=kwargs.get("low_percentile", 10),
+            high_percentile=kwargs.get("high_percentile", 90),
+        )
+    if method == "local_robust_detrended":
+        return get_amplitude_by_local_robust_detrended(
+            xic,
+            local_freqs,
+            sampling_interval,
+            baseline_quantile=kwargs.get("baseline_quantile", 0.2),
+            summary_percentile=kwargs.get("summary_percentile", 75),
+        )
+    raise ValueError(
+        "Unknown amplitude method. Use one of: "
+        "q75, q90, global_trimmed_detrended, local_robust_detrended."
+    )
+
