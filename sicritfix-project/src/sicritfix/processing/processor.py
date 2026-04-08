@@ -237,7 +237,15 @@ def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_si
     return corrected_map, time_correct_spectra
         
 
-def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.1, rt_window=5):
+def process_file(
+    file_path,
+    save_as,
+    plot=False,
+    verbose=False,
+    mz_window=0.1,
+    rt_window=5,
+    amplitude_method="local_robust_detrended",
+):
     """
    Main pipeline for detecting and correcting oscillatory artifacts in an MS data file.
 
@@ -355,6 +363,7 @@ def process_file(file_path, save_as, plot=False, verbose=False, mz_window=0.1, r
             rt_window=rt_window,
             mz_tol=mz_window,
             debug_signals=verbose,
+            amplitude_method=amplitude_method,
         )
                 
         xic_signals[target_mz] = xic

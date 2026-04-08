@@ -81,6 +81,7 @@ def correct_oscillations(
     rt_window=5,
     mz_tol=0.01,
     debug_signals=False,
+    amplitude_method="local_robust_detrended",
 ):
     """
     Corrects oscillations in an extracted ion chromatogram (XIC) by subtracting a
@@ -145,7 +146,12 @@ def correct_oscillations(
     
     
     # 3. Amplitude at each m/z
-    amplitude=get_amplitude(xic, local_freqs_ref, sampling_interval)
+    amplitude = get_amplitude(
+        xic,
+        local_freqs_ref,
+        sampling_interval,
+        method=amplitude_method,
+    )
     
     
     # 4. Creation of the modulated signal
