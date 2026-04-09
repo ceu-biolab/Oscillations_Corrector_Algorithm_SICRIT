@@ -207,12 +207,15 @@ def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_si
             target_mz=round(float(target_mz), 3)
             corrected_intensity = residual_signals[target_mz][i]
 
-            # Find index of closest m/z (within tolerance)
+            # Deterministic mapping: use the single nearest m/z peak in this scan.
             mz_diff = np.abs(mzs - target_mz)
-            idx_matches = np.where(mz_diff <= mz_bin_size)[0]#indexes within the mz_tol
+            if mz_diff.size == 0:
+                continue
+            nearest_idx = int(np.argmin(mz_diff))
 
-            for idx in idx_matches:
-                corrected_intensities[idx] = corrected_intensity
+            # Safety gate: only apply correction if nearest peak is close enough.
+            if mz_diff[nearest_idx] <= mz_bin_size:
+                corrected_intensities[nearest_idx] = corrected_intensity
             
 
         # Create a new spectrum with corrected peaks
