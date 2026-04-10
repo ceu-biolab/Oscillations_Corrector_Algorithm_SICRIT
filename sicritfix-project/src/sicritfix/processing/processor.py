@@ -207,15 +207,10 @@ def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_si
             target_mz=round(float(target_mz), 3)
             corrected_intensity = residual_signals[target_mz][i]
 
-            # Deterministic mapping: use the single nearest m/z peak in this scan.
             mz_diff = np.abs(mzs - target_mz)
-            if mz_diff.size == 0:
-                continue
-            nearest_idx = int(np.argmin(mz_diff))
-
-            # Safety gate: only apply correction if nearest peak is close enough.
-            if mz_diff[nearest_idx] <= mz_bin_size:
-                corrected_intensities[nearest_idx] = corrected_intensity
+            idx_matches = np.where(mz_diff <= mz_bin_size)[0]  # all peaks within mz tolerance
+            for idx in idx_matches:
+                corrected_intensities[idx] = corrected_intensity
             
 
         # Create a new spectrum with corrected peaks
@@ -379,7 +374,13 @@ def process_file(
             
             
     # 3. Apply changes (corrections) to spectra
-    corrected_map, time_correct_spectra=correct_spectra(input_map, oscillating_mzs, rts, residual_signals)
+    corrected_map, time_correct_spectra=correct_spectra(
+        input_map,
+        oscillating_mzs,
+        rts,
+        residual_signals,
+        mz_bin_size=mz_window,
+    )
             
             
     #Computation of overall execution time
