@@ -2,9 +2,9 @@
 # src/sicritfix/main.py
 import argparse
 import os
-from sicritfix.processing.processor import process_file
 
 def main():
+    from sicritfix.processing.processor import process_file
     parser = argparse.ArgumentParser(
         description="Correct oscillations in an mzML/mzXML file and output the corrected mzML."
     )
@@ -29,6 +29,21 @@ def main():
     parser.add_argument(
         "--rt_window", type=float, default=5,
         help="RT window to calculate the frequency of the oscillations in seconds. "
+    )
+
+    parser.add_argument(
+        "--amplitude_method",
+        type=str,
+        default="local_robust_detrended",
+        choices=["q75", "q90", "global_trimmed_detrended", "local_robust_detrended", "all"],
+        help=(
+            "Amplitude estimation method. "
+            "'q75': local IQR amplitudes summarized by 75th percentile (conservative). "
+            "'q90': local IQR amplitudes summarized by 90th percentile (more aggressive). "
+            "'global_trimmed_detrended': baseline-detrended global trimmed range estimator. "
+            "'local_robust_detrended': baseline-detrended robust local-window estimator. "
+            "'all': run all four methods and save one corrected mzML per method."
+        ),
     )
     
     parser.add_argument(
@@ -88,44 +103,67 @@ def main():
     if args.plot:
         print(" Plotting is ENABLED")
 
+    if args.amplitude_method == "all":
+        methods_to_run = ["q75", "q90", "global_trimmed_detrended", "local_robust_detrended"]
+    else:
+        methods_to_run = [args.amplitude_method]
+
     for file_path in files_to_process:
 
+        explicit_single_output = bool(args.output and len(files_to_process) == 1 and len(methods_to_run) == 1)
+
         if args.output and len(files_to_process) == 1:
-            output_path = args.output
+            requested_base, requested_ext = os.path.splitext(args.output)
+            if not requested_ext:
+                requested_ext = ".mzML"
+            base_output = requested_base
+            output_ext = requested_ext
         else:
-            base, ext = os.path.splitext(file_path)
+            file_base, file_ext = os.path.splitext(file_path)
             if os.path.isfile(input_path):
-                output_path = base + "_corrected" + ext
+                base_output = file_base
+                output_ext = file_ext if file_ext else ".mzML"
             else:
-                output_path = base + "_corrected.mzML"
+                base_output = file_base
+                output_ext = ".mzML"
 
-        if os.path.exists(output_path) and not args.overwrite:
-            print(f"Output exists: {output_path}")
-            print("Use --overwrite to replace it.")
-            continue
+        for method in methods_to_run:
+            if explicit_single_output:
+                output_path = args.output if os.path.splitext(args.output)[1] else f"{args.output}.mzML"
+            elif len(methods_to_run) == 1:
+                output_path = f"{base_output}_corrected{output_ext}"
+            else:
+                output_path = f"{base_output}_{method}_corrected{output_ext}"
 
-        if os.path.exists(output_path) and args.overwrite:
-            print(f" Removing existing file: {output_path}")
-            os.remove(output_path)
+            if os.path.exists(output_path) and not args.overwrite:
+                print(f"Output exists: {output_path}")
+                print("Use --overwrite to replace it.")
+                continue
 
-        if args.verbose:
-            print("Processing file:")
-            print(f"  Input : {file_path}")
-            print(f"  Output: {output_path}")
+            if os.path.exists(output_path) and args.overwrite:
+                print(f" Removing existing file: {output_path}")
+                os.remove(output_path)
 
-        file_corrected = process_file(
-            file_path=file_path,
-            save_as=output_path,
-            plot=args.plot,
-            verbose=args.verbose,
-            mz_window=args.mz_window,
-            rt_window=args.rt_window,
-        )
+            if args.verbose:
+                print("Processing file:")
+                print(f"  Input : {file_path}")
+                print(f"  Output: {output_path}")
+                print(f"  Amplitude method: {method}")
 
-        if file_corrected:
-            print(f"Oscillations detected and corrected → {output_path}")
-        else:
-            print(f"No oscillations detected → {output_path}")
+            file_corrected = process_file(
+                file_path=file_path,
+                save_as=output_path,
+                plot=args.plot,
+                verbose=args.verbose,
+                mz_window=args.mz_window,
+                rt_window=args.rt_window,
+                amplitude_method=method,
+            )
+
+            if file_corrected:
+                print(f"Oscillations detected and corrected → {output_path}")
+            else:
+                print(f"No oscillations detected → {output_path}")
 
 if __name__ == "__main__":
     main()
