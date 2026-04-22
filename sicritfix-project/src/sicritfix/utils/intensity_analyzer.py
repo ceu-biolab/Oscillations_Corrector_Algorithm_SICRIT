@@ -127,9 +127,14 @@ def _estimate_period_points(local_freqs, sampling_interval, default_points=70):
     return max(3, int(round(1.0 / (median_freq * sampling_interval))))
 
 
-def get_amplitude_by_q75(xic, local_freqs, sampling_interval):
+def get_amplitude_by_percentile(
+    xic,
+    local_freqs,
+    sampling_interval,
+    summary_percentile=75,
+):
     """
-    Legacy estimator: local-window IQR amplitude summarized by Q75.
+    Legacy estimator: local-window IQR amplitude summarized by a percentile.
 
     Parameters
     ----------
@@ -139,6 +144,8 @@ def get_amplitude_by_q75(xic, local_freqs, sampling_interval):
         Local frequency estimates (Hz).
     sampling_interval : float
         Time between samples (seconds).
+    summary_percentile : float, optional (default=75)
+        Percentile used to summarize local amplitudes into a single value.
 
     Returns
     -------
@@ -168,37 +175,28 @@ def get_amplitude_by_q75(xic, local_freqs, sampling_interval):
 
     if not local_amplitudes:
         return 0.0
-    return float(max(0.0, np.percentile(local_amplitudes, 75)))
+    return float(max(0.0, np.percentile(local_amplitudes, summary_percentile)))
+
+
+def get_amplitude_by_q75(xic, local_freqs, sampling_interval):
+    return get_amplitude_by_percentile(
+        xic,
+        local_freqs,
+        sampling_interval,
+        summary_percentile=75,
+    )
 
 
 def get_amplitude_by_q90(xic, local_freqs, sampling_interval):
     """
     More aggressive legacy estimator: same local-IQR values summarized by Q90.
     """
-    xic = np.asarray(xic, dtype=float)
-    local_freqs = np.asarray(local_freqs, dtype=float)
-    if xic.size == 0 or sampling_interval <= 0:
-        return 0.0
-
-    local_amplitudes = []
-    for i, freq in enumerate(local_freqs):
-        if not np.isfinite(freq) or freq <= 0:
-            continue
-
-        period = max(3, int(round(1.0 / (freq * sampling_interval))))
-        center = i * int(len(xic) / max(1, len(local_freqs)))
-        start = int(max(0, center - period / 2))
-        end = int(min(len(xic), center + period / 2))
-        window = xic[start:end]
-        if window.size < 5:
-            continue
-
-        q25, q75 = np.percentile(window, [25, 75])
-        local_amplitudes.append((q75 - q25) / 2.0)
-
-    if not local_amplitudes:
-        return 0.0
-    return float(max(0.0, np.percentile(local_amplitudes, 90)))
+    return get_amplitude_by_percentile(
+        xic,
+        local_freqs,
+        sampling_interval,
+        summary_percentile=90,
+    )
 
 
 def get_amplitude_by_local_robust_detrended(
@@ -327,6 +325,13 @@ def get_amplitude(
         return get_amplitude_by_q75(xic, local_freqs, sampling_interval)
     if method == "q90":
         return get_amplitude_by_q90(xic, local_freqs, sampling_interval)
+    if method == "percentile":
+        return get_amplitude_by_percentile(
+            xic,
+            local_freqs,
+            sampling_interval,
+            summary_percentile=kwargs.get("summary_percentile", 75),
+        )
     if method == "global_trimmed_detrended":
         return get_amplitude_by_global_trimmed_detrended(
             xic,
@@ -346,6 +351,5 @@ def get_amplitude(
         )
     raise ValueError(
         "Unknown amplitude method. Use one of: "
-        "q75, q90, global_trimmed_detrended, local_robust_detrended."
+        "q75, q90, percentile, global_trimmed_detrended, local_robust_detrended."
     )
-

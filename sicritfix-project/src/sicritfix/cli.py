@@ -3,6 +3,13 @@
 import argparse
 import os
 
+def _percentile_argument(value):
+    percentile = float(value)
+    if percentile < 0 or percentile > 100:
+        raise argparse.ArgumentTypeError("--amplitude_percentile must be between 0 and 100.")
+    return percentile
+
+
 def main():
     from sicritfix.processing.processor import process_file
     parser = argparse.ArgumentParser(
@@ -35,14 +42,25 @@ def main():
         "--amplitude_method",
         type=str,
         default="local_robust_detrended",
-        choices=["q75", "q90", "global_trimmed_detrended", "local_robust_detrended", "all"],
+        choices=["q75", "q90", "percentile", "global_trimmed_detrended", "local_robust_detrended", "all"],
         help=(
             "Amplitude estimation method. "
             "'q75': local IQR amplitudes summarized by 75th percentile (conservative). "
             "'q90': local IQR amplitudes summarized by 90th percentile (more aggressive). "
+            "'percentile': local IQR amplitudes summarized by the percentile set with --amplitude_percentile. "
             "'global_trimmed_detrended': baseline-detrended global trimmed range estimator. "
             "'local_robust_detrended': baseline-detrended robust local-window estimator. "
-            "'all': run all four methods and save one corrected mzML per method."
+            "'all': run the four fixed built-in methods and save one corrected mzML per method."
+        ),
+    )
+
+    parser.add_argument(
+        "--amplitude_percentile",
+        type=_percentile_argument,
+        default=75.0,
+        help=(
+            "Percentile used when --amplitude_method percentile is selected "
+            "(for example 75 or 90)."
         ),
     )
     
@@ -128,12 +146,16 @@ def main():
                 output_ext = ".mzML"
 
         for method in methods_to_run:
+            method_label = method
+            if method == "percentile":
+                method_label = f"percentile{args.amplitude_percentile:g}"
+
             if explicit_single_output:
                 output_path = args.output if os.path.splitext(args.output)[1] else f"{args.output}.mzML"
             elif len(methods_to_run) == 1:
                 output_path = f"{base_output}_corrected{output_ext}"
             else:
-                output_path = f"{base_output}_{method}_corrected{output_ext}"
+                output_path = f"{base_output}_{method_label}_corrected{output_ext}"
 
             if os.path.exists(output_path) and not args.overwrite:
                 print(f"Output exists: {output_path}")
@@ -148,7 +170,10 @@ def main():
                 print("Processing file:")
                 print(f"  Input : {file_path}")
                 print(f"  Output: {output_path}")
-                print(f"  Amplitude method: {method}")
+                if method == "percentile":
+                    print(f"  Amplitude method: {method} ({args.amplitude_percentile:g})")
+                else:
+                    print(f"  Amplitude method: {method}")
 
             file_corrected = process_file(
                 file_path=file_path,
@@ -158,6 +183,7 @@ def main():
                 mz_window=args.mz_window,
                 rt_window=args.rt_window,
                 amplitude_method=method,
+                amplitude_percentile=args.amplitude_percentile,
             )
 
             if file_corrected:

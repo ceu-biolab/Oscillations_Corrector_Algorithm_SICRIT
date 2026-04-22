@@ -19,6 +19,7 @@ import numpy as np
 from sicritfix.utils.intensity_analyzer import (
     build_xic,
     get_amplitude,
+    get_amplitude_by_percentile,
     get_amplitude_by_q75,
     get_amplitude_by_q90,
     get_amplitude_by_global_trimmed_detrended,
@@ -72,14 +73,33 @@ class TestIntensityAnalyzer(unittest.TestCase):
     def test_alternative_amplitude_methods_non_negative(self):
         xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.rt_window, self.mz_tol)
         amps = [
+            get_amplitude_by_percentile(xic, self.local_freqs, self.sampling_interval, summary_percentile=99),
             get_amplitude_by_q75(xic, self.local_freqs, self.sampling_interval),
             get_amplitude_by_q90(xic, self.local_freqs, self.sampling_interval),
             get_amplitude_by_global_trimmed_detrended(xic, self.local_freqs, self.sampling_interval),
             get_amplitude_by_local_robust_detrended(xic, self.local_freqs, self.sampling_interval),
+            get_amplitude(xic, self.local_freqs, self.sampling_interval, method="percentile", summary_percentile=99),
             get_amplitude(xic, self.local_freqs, self.sampling_interval, method="q75"),
             get_amplitude(xic, self.local_freqs, self.sampling_interval, method="q90"),
         ]
         self.assertTrue(all(a >= 0 for a in amps))
+
+    def test_percentile_99_matches_direct_and_dispatch_calls(self):
+        xic = build_xic(self.mz_array, self.intensity_array, self.rt_array, self.target_mz, self.rt_window, self.mz_tol)
+        direct_amp = get_amplitude_by_percentile(
+            xic,
+            self.local_freqs,
+            self.sampling_interval,
+            summary_percentile=99,
+        )
+        dispatched_amp = get_amplitude(
+            xic,
+            self.local_freqs,
+            self.sampling_interval,
+            method="percentile",
+            summary_percentile=99,
+        )
+        self.assertAlmostEqual(direct_amp, dispatched_amp, places=8)
 
 
 if __name__ == "__main__":

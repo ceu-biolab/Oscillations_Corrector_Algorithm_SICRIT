@@ -82,6 +82,7 @@ def correct_oscillations(
     mz_tol=0.01,
     debug_signals=False,
     amplitude_method="local_robust_detrended",
+    amplitude_percentile=75,
 ):
     """
     Corrects oscillations in an extracted ion chromatogram (XIC) by subtracting a
@@ -151,6 +152,7 @@ def correct_oscillations(
         local_freqs_ref,
         sampling_interval,
         method=amplitude_method,
+        summary_percentile=amplitude_percentile,
     )
     
     
