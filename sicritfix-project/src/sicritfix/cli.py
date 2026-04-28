@@ -10,6 +10,13 @@ def _percentile_argument(value):
     return percentile
 
 
+def _multiplier_argument(value):
+    multiplier = float(value)
+    if multiplier < 0:
+        raise argparse.ArgumentTypeError("--amplitude_multiplier must be greater than or equal to 0.")
+    return multiplier
+
+
 def main():
     from sicritfix.processing.processor import process_file
     parser = argparse.ArgumentParser(
@@ -61,6 +68,16 @@ def main():
         help=(
             "Percentile used when --amplitude_method percentile is selected "
             "(for example 75 or 90)."
+        ),
+    )
+
+    parser.add_argument(
+        "--amplitude_multiplier",
+        type=_multiplier_argument,
+        default=1.0,
+        help=(
+            "Multiplication factor applied to the estimated amplitude for any method "
+            "(for example 1.2 to increase correction strength by 20%%)."
         ),
     )
     
@@ -174,6 +191,7 @@ def main():
                     print(f"  Amplitude method: {method} ({args.amplitude_percentile:g})")
                 else:
                     print(f"  Amplitude method: {method}")
+                print(f"  Amplitude multiplier: {args.amplitude_multiplier:g}")
 
             file_corrected = process_file(
                 file_path=file_path,
@@ -184,6 +202,7 @@ def main():
                 rt_window=args.rt_window,
                 amplitude_method=method,
                 amplitude_percentile=args.amplitude_percentile,
+                amplitude_multiplier=args.amplitude_multiplier,
             )
 
             if file_corrected:

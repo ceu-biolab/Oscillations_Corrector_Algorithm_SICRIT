@@ -73,6 +73,35 @@ class TestCorrector(unittest.TestCase):
         # Check signal shape
         self.assertTrue(np.allclose(xic, modulated_signal + residual_signal, rtol=1e-4))
 
+    def test_correct_oscillations_applies_amplitude_multiplier(self):
+        rt_array = np.linspace(0, 10, 100)
+        mz_array = [np.array([100.0, 200.0]) for _ in range(100)]
+        intensity_array = [np.array([0.0, 10.0 + 5 * np.sin(2 * np.pi * 0.5 * t)]) for t in rt_array]
+        phase_ref = 2 * np.pi * 0.5 * rt_array
+        local_freqs_ref = np.full_like(rt_array, 0.5)
+
+        _, modulated_signal_base, _ = correct_oscillations(
+            rt_array,
+            mz_array,
+            intensity_array,
+            phase_ref,
+            local_freqs_ref,
+            target_mz=200.0,
+            rt_window=1,
+            amplitude_multiplier=1.0,
+        )
+        _, modulated_signal_scaled, _ = correct_oscillations(
+            rt_array,
+            mz_array,
+            intensity_array,
+            phase_ref,
+            local_freqs_ref,
+            target_mz=200.0,
+            rt_window=1,
+            amplitude_multiplier=2.0,
+        )
+
+        np.testing.assert_allclose(modulated_signal_scaled, 2.0 * modulated_signal_base, rtol=1e-4, atol=1e-4)
+
 if __name__ == "__main__":
     unittest.main()
-

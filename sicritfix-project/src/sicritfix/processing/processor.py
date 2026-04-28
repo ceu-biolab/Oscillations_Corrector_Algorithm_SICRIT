@@ -244,6 +244,7 @@ def process_file(
     rt_window=5,
     amplitude_method="local_robust_detrended",
     amplitude_percentile=75,
+    amplitude_multiplier=1.0,
 ):
     """
    Main pipeline for detecting and correcting oscillatory artifacts in an MS data file.
@@ -364,6 +365,7 @@ def process_file(
             debug_signals=verbose,
             amplitude_method=amplitude_method,
             amplitude_percentile=amplitude_percentile,
+            amplitude_multiplier=amplitude_multiplier,
         )
                 
         xic_signals[target_mz] = xic
