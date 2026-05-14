@@ -39,11 +39,12 @@ from sicritfix.processing.processor import detect_oscillating_mzs, correct_spect
 class TestProcessor(unittest.TestCase):
 
     def setUp(self):
+        np.random.seed(42)
         self.rt_array = np.linspace(0, 10, 50)
         self.osc_mz = 100.123
 
         # Create artificial oscillating XIC
-        osc_signal = np.sin(2 * np.pi * 3 * self.rt_array) + np.random.normal(0, 0.1, 50)
+        osc_signal = 10 + 5 * np.sin(2 * np.pi * 3 * self.rt_array) + np.random.normal(0, 0.05, 50)
         flat_signal = np.zeros(50)
 
         self.mz_array = [np.array([self.osc_mz, 150.0]) for _ in range(50)]
@@ -62,20 +63,49 @@ class TestProcessor(unittest.TestCase):
     def test_detect_oscillating_mzs(self):
         _, oscillating_mzs, _ = detect_oscillating_mzs(
             self.rt_array, self.mz_array, self.intensity_array, self.mz_window, self.rt_window,
-            min_occurrences=5, power_threshold=0.05
+            min_occurrences=5, power_threshold=0.01
         )
         self.assertIn(round(self.osc_mz, 2), oscillating_mzs)
 
     def test_correct_spectra_structure(self):
-        dummy_residuals = {
+        dummy_modulated = {
             round(self.osc_mz, 3): np.ones(len(self.rt_array)) * 0.5
         }
         corrected_map, exec_time = correct_spectra(
-            self.input_map, [self.osc_mz], self.rt_array, dummy_residuals, mz_bin_size=0.01
+            self.input_map, [self.osc_mz], self.rt_array, dummy_modulated, mz_bin_size=0.01
         )
         self.assertIsInstance(corrected_map, oms.MSExperiment)
         self.assertEqual(corrected_map.getNrSpectra(), self.input_map.getNrSpectra())
         #self.assertTrue(exec_time > 0)
+
+    def test_correct_spectra_distributes_subtraction_across_matching_peaks(self):
+        input_map = oms.MSExperiment()
+        spec = oms.MSSpectrum()
+        spec.setRT(0.0)
+        spec.setMSLevel(1)
+        mzs = np.array([100.120, 100.126, 150.0], dtype=float)
+        intensities = np.array([6.0, 4.0, 3.0], dtype=float)
+        spec.set_peaks((mzs, intensities))
+        input_map.addSpectrum(spec)
+
+        dummy_modulated = {
+            round(self.osc_mz, 3): np.array([5.0], dtype=float)
+        }
+        corrected_map, _ = correct_spectra(
+            input_map,
+            [self.osc_mz],
+            np.array([0.0], dtype=float),
+            dummy_modulated,
+            mz_bin_size=0.01,
+        )
+
+        _, corrected_intensities = corrected_map[0].get_peaks()
+        np.testing.assert_allclose(
+            corrected_intensities,
+            np.array([3.0, 2.0, 3.0], dtype=float),
+            rtol=1e-6,
+            atol=1e-6,
+        )
         
     def test_process_file_no_oscillations(self):
         """Ensure process_file returns original file if no oscillations are detected."""
@@ -115,5 +145,3 @@ class TestProcessor(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-

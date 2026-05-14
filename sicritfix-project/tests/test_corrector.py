@@ -103,5 +103,28 @@ class TestCorrector(unittest.TestCase):
 
         np.testing.assert_allclose(modulated_signal_scaled, 2.0 * modulated_signal_base, rtol=1e-4, atol=1e-4)
 
+    def test_correct_oscillations_fits_phase_offset_per_mz(self):
+        rt_array = np.linspace(0, 40, 400)
+        mz_array = [np.array([100.0, 200.0]) for _ in range(400)]
+        phase_ref = 2 * np.pi * 0.2 * rt_array
+        phase_shift = 0.7
+        true_oscillation = 5.0 * np.sin(phase_ref + phase_shift)
+        intensity_array = [np.array([0.0, 10.0 + true_oscillation[i]]) for i in range(400)]
+        local_freqs_ref = np.full_like(rt_array, 0.2)
+
+        _, modulated_signal, _ = correct_oscillations(
+            rt_array,
+            mz_array,
+            intensity_array,
+            phase_ref,
+            local_freqs_ref,
+            target_mz=200.0,
+            rt_window=0.01,
+            amplitude_method="q90",
+        )
+
+        corr = np.corrcoef(modulated_signal, true_oscillation)[0, 1]
+        self.assertGreater(corr, 0.95)
+
 if __name__ == "__main__":
     unittest.main()

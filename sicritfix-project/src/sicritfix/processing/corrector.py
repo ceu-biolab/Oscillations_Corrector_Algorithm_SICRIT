@@ -70,6 +70,62 @@ def generate_modulated_signal(amplitude, phase, offset=0.0):
     modulated_signal = offset + amplitude * np.sin(phase)
     
     return modulated_signal
+
+
+def _estimate_period_points(local_freqs, sampling_interval, default_points=70):
+    local_freqs = np.asarray(local_freqs, dtype=float)
+    valid_freqs = local_freqs[np.isfinite(local_freqs) & (local_freqs > 0)]
+    if valid_freqs.size == 0 or sampling_interval <= 0:
+        return default_points
+    median_freq = float(np.median(valid_freqs))
+    return max(3, int(round(1.0 / (median_freq * sampling_interval))))
+
+
+def _moving_average(signal, window_points):
+    signal = np.asarray(signal, dtype=float)
+    if window_points <= 1:
+        return signal.copy()
+    window_points = min(window_points, signal.size)
+    if window_points <= 1:
+        return signal.copy()
+    if window_points % 2 == 0:
+        window_points = max(1, window_points - 1)
+    kernel = np.ones(window_points, dtype=float) / window_points
+    return np.convolve(signal, kernel, mode="same")
+
+
+def fit_phase_offset(xic, phase_ref, local_freqs_ref, sampling_interval):
+    """
+    Estimate the best per-m/z phase offset against the shared reference phase.
+
+    The target XIC is detrended with a slow moving average so the fit focuses on
+    the oscillatory component instead of the chromatographic baseline.
+    """
+    xic = np.asarray(xic, dtype=float)
+    phase_ref = np.asarray(phase_ref, dtype=float)
+    if xic.size == 0 or phase_ref.size != xic.size:
+        return 0.0
+
+    period_points = _estimate_period_points(local_freqs_ref, sampling_interval)
+    trend_window = max(25, period_points * 5)
+    if trend_window % 2 == 0:
+        trend_window += 1
+
+    detrended = xic - _moving_average(xic, trend_window)
+    sin_ref = np.sin(phase_ref)
+    cos_ref = np.cos(phase_ref)
+    design = np.column_stack([sin_ref, cos_ref])
+
+    try:
+        coeffs, _, _, _ = np.linalg.lstsq(design, detrended, rcond=None)
+    except np.linalg.LinAlgError:
+        return 0.0
+
+    sin_coeff, cos_coeff = coeffs
+    if np.isclose(sin_coeff, 0.0) and np.isclose(cos_coeff, 0.0):
+        return 0.0
+
+    return float(np.arctan2(cos_coeff, sin_coeff))
     
 def correct_oscillations(
     rt_array,
@@ -158,8 +214,9 @@ def correct_oscillations(
     amplitude *= amplitude_multiplier
     
     
-    # 4. Creation of the modulated signal
-    modulated_signal = generate_modulated_signal(amplitude, phase_ref)
+    # 4. Fit a per-m/z phase offset while keeping the chosen amplitude strategy.
+    phase_offset = fit_phase_offset(xic, phase_ref, local_freqs_ref, sampling_interval)
+    modulated_signal = generate_modulated_signal(amplitude, phase_ref + phase_offset)
     
     # 5. Computation of the residual/final signal
     residual_signal = xic - modulated_signal

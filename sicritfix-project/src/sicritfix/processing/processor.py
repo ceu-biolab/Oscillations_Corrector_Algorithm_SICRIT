@@ -153,7 +153,7 @@ def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window=0.1, r
      
     return binned_mzs, oscillating_mzs, time_detect_oscillating_mzs
 
-def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_size=0.001):
+def correct_spectra(input_map, oscillating_mzs, rts, modulated_signals, mz_bin_size=0.001):
     """
     Applies oscillation-corrected intensity values to an MSExperiment.
 
@@ -173,9 +173,9 @@ def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_si
     rts : list of float
         Retention times corresponding to each spectrum in the input_map.
 
-    residual_signals : dict
-        Dictionary mapping each oscillating m/z value to a NumPy array of
-        corrected intensity values, indexed by scan (i.e., spectrum position).
+    modulated_signals : dict
+        Dictionary mapping each oscillating m/z value to the modeled oscillation
+        signal to subtract at each scan.
 
     mz_bin_size : float, optional (default=0.001)
         The tolerance used when matching m/z values in the spectrum to the 
@@ -185,7 +185,8 @@ def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_si
     -------
     corrected_map : MSExperiment
         A new MSExperiment object where the specified m/z values have been 
-        corrected with the provided residual intensities.
+        corrected by subtracting the modeled oscillatory contribution from the
+        matching raw peaks.
 
     time_correct_spectra : float
         Total execution time (in seconds) required to perform the correction.
@@ -205,12 +206,34 @@ def correct_spectra(input_map, oscillating_mzs, rts, residual_signals, mz_bin_si
 
         for target_mz in oscillating_mzs:
             target_mz=round(float(target_mz), 3)
-            corrected_intensity = residual_signals[target_mz][i]
+            modeled_subtraction = float(modulated_signals[target_mz][i])
 
             mz_diff = np.abs(mzs - target_mz)
             idx_matches = np.where(mz_diff <= mz_bin_size)[0]  # all peaks within mz tolerance
-            for idx in idx_matches:
-                corrected_intensities[idx] = corrected_intensity
+            if idx_matches.size == 0:
+                continue
+
+            matched_intensities = corrected_intensities[idx_matches]
+            positive_mask = matched_intensities > 0
+            if not np.any(positive_mask):
+                continue
+
+            positive_indices = idx_matches[positive_mask]
+            positive_intensities = corrected_intensities[positive_indices]
+            matched_sum = float(np.sum(positive_intensities))
+            if matched_sum <= 0:
+                continue
+
+            if modeled_subtraction >= 0:
+                effective_subtraction = min(modeled_subtraction, matched_sum)
+            else:
+                effective_subtraction = modeled_subtraction
+
+            weights = positive_intensities / matched_sum
+            corrected_intensities[positive_indices] = np.maximum(
+                0.0,
+                positive_intensities - effective_subtraction * weights,
+            )
             
 
         # Create a new spectrum with corrected peaks
@@ -382,7 +405,7 @@ def process_file(
         input_map,
         oscillating_mzs,
         rts,
-        residual_signals,
+        modulated_signals,
         mz_bin_size=mz_window,
     )
             
