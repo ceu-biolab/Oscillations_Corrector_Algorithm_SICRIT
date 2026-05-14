@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "sicritfix"
-version = "0.0.7"
+version = "0.0.8"
 description = "Python package to detect and correct oscillatory artifacts in mass spectrometry mzML data."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
