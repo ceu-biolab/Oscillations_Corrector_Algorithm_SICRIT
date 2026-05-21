@@ -268,6 +268,7 @@ def process_file(
     amplitude_method="local_robust_detrended",
     amplitude_percentile=75,
     amplitude_multiplier=1.0,
+    reference_mz=922.098,
 ):
     """
    Main pipeline for detecting and correcting oscillatory artifacts in an MS data file.
@@ -343,12 +344,13 @@ def process_file(
         
     # 2. Oscillations' correction
             
-        #2.1 Extract freq from signal of ref: m/z=922.098. Use mz_tolerance of 0.1 Da 
+        #2.1 Extract freq from the chosen reference m/z using 0.1 Da tolerance.
     local_freqs_ref, phase_ref = obtain_freq_from_signal(
         rts,
         mz_array,
         intensity_array,
         rt_window=rt_window,
+        mz_ref=reference_mz,
         mz_window=0.1,
     )
     

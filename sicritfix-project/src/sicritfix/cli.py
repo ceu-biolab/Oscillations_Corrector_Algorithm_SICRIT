@@ -17,6 +17,13 @@ def _multiplier_argument(value):
     return multiplier
 
 
+def _mz_argument(value):
+    mz = float(value)
+    if mz <= 0:
+        raise argparse.ArgumentTypeError("--reference_mz must be greater than 0.")
+    return mz
+
+
 def main():
     from sicritfix.processing.processor import process_file
     parser = argparse.ArgumentParser(
@@ -43,6 +50,13 @@ def main():
     parser.add_argument(
         "--rt_window", type=float, default=5,
         help="RT window to calculate the frequency of the oscillations in seconds. "
+    )
+
+    parser.add_argument(
+        "--reference_mz",
+        type=_mz_argument,
+        default=922.098,
+        help="Reference m/z used to estimate the oscillation frequency and phase."
     )
 
     parser.add_argument(
@@ -192,6 +206,7 @@ def main():
                 else:
                     print(f"  Amplitude method: {method}")
                 print(f"  Amplitude multiplier: {args.amplitude_multiplier:g}")
+                print(f"  Reference m/z: {args.reference_mz:g}")
 
             file_corrected = process_file(
                 file_path=file_path,
@@ -203,6 +218,7 @@ def main():
                 amplitude_method=method,
                 amplitude_percentile=args.amplitude_percentile,
                 amplitude_multiplier=args.amplitude_multiplier,
+                reference_mz=args.reference_mz,
             )
 
             if file_corrected:
