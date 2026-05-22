@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 import numpy as np
 
 import sys
@@ -69,7 +70,15 @@ def load_arrays(file_path: str):
     return exp, rt_array, mz_array, intensity_array
 
 
-def get_phase_reference(rt_array, mz_array, intensity_array, phase_source_mz, rt_window, mz_window):
+def get_phase_reference(
+    rt_array,
+    mz_array,
+    intensity_array,
+    phase_source_mz,
+    rt_window,
+    mz_window,
+    window_scan_size,
+):
     sampling_interval = float(np.mean(np.diff(rt_array)))
     ref_xic = build_xic(
         mz_array,
@@ -82,7 +91,7 @@ def get_phase_reference(rt_array, mz_array, intensity_array, phase_source_mz, rt
     rt_freqs, local_freqs_ref = local_frequencies_with_fft(
         ref_xic,
         rt_array,
-        window_scan_size=70,
+        window_scan_size=window_scan_size,
         sampling_interval=sampling_interval,
     )
     phase_ref = apply_polynomial_regression(rt_array, rt_freqs, local_freqs_ref)
@@ -99,6 +108,7 @@ def run_targeted_analysis(
     mz_window: float = 0.1,
     rt_window: float = 5.0,
     amplitude_multiplier: float = 1.0,
+    window_scan_size: int = 70,
 ):
     outdir = Path(output_dir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -111,11 +121,15 @@ def run_targeted_analysis(
         phase_source_mz=PHASE_SOURCE_MZ,
         rt_window=rt_window,
         mz_window=mz_window,
+        window_scan_size=window_scan_size,
     )
+    rt_minutes = rt_array / 60.0
+    major_tick_minutes = 100.0 / 60.0
 
     summary = {
         "file": file_path,
         "phase_source_mz": PHASE_SOURCE_MZ,
+        "window_scan_size": window_scan_size,
         "mz_window": mz_window,
         "rt_window": rt_window,
         "amplitude_multiplier": amplitude_multiplier,
@@ -184,9 +198,9 @@ def run_targeted_analysis(
         )
         for ax, method in zip(axes1, METHODS):
             result = method_results[method]
-            ax.plot(rt_array, original_xic, color="black", linewidth=1.0, label="Original signal")
+            ax.plot(rt_minutes, original_xic, color="black", linewidth=1.0, label="Original signal")
             ax.plot(
-                rt_array,
+                rt_minutes,
                 result["modulated_signal"],
                 color=METHOD_COLORS[method],
                 linewidth=1.0,
@@ -194,7 +208,7 @@ def run_targeted_analysis(
                 label=f"Signal to subtract ({method})",
             )
             ax.plot(
-                rt_array,
+                rt_minutes,
                 result["residual_signal"],
                 color=METHOD_COLORS[method],
                 linewidth=1.0,
@@ -208,12 +222,15 @@ def run_targeted_analysis(
                 f"STD reduction={result['std_reduction_pct']:.2f}%"
             )
             ax.grid(True, alpha=0.2)
+            ax.xaxis.set_major_locator(MultipleLocator(major_tick_minutes))
             ax.legend(loc="upper right", fontsize=8)
-        axes1[-1].set_xlabel("Retention time (s)")
+        axes1[-1].set_xlabel("Retention time (min; major ticks every 100 s)")
         fig1.tight_layout()
         fig1.subplots_adjust(top=0.96)
-        fig1.savefig(outdir / f"{sanitize_name(target_name)}_01_combined_signals.png", dpi=180, bbox_inches="tight")
+        combined_plot_path = outdir / f"{sanitize_name(target_name)}_01_combined_signals.png"
+        fig1.savefig(combined_plot_path, dpi=180, bbox_inches="tight")
         plt.close(fig1)
+        print(f"Saved combined signals plot to: {combined_plot_path}")
 
         fig3, ax3 = plt.subplots(figsize=(11, 6))
         x = np.arange(len(labels), dtype=float)
@@ -232,8 +249,10 @@ def run_targeted_analysis(
                 fontsize=8,
             )
         fig3.tight_layout()
-        fig3.savefig(outdir / f"{sanitize_name(target_name)}_02_amplitudes.png", dpi=180, bbox_inches="tight")
+        amplitude_plot_path = outdir / f"{sanitize_name(target_name)}_02_amplitudes.png"
+        fig3.savefig(amplitude_plot_path, dpi=180, bbox_inches="tight")
         plt.close(fig3)
+        print(f"Saved amplitude plot to: {amplitude_plot_path}")
 
         summary["targets"][target_name] = {
             "target_mz": target_mz,
@@ -263,4 +282,5 @@ if __name__ == "__main__":
         mz_window=0.1,
         rt_window=5.0,
         amplitude_multiplier=1.0,
+        window_scan_size=70,
     )
