@@ -37,6 +37,7 @@ class TestCli(unittest.TestCase):
                     amplitude_percentile=75.0,
                     amplitude_multiplier=1.0,
                     reference_mz=922.098,
+                    window_scan_size=70,
                 )
 
     def test_main_processes_all_amplitude_methods(self):
@@ -105,6 +106,7 @@ class TestCli(unittest.TestCase):
                     amplitude_percentile=99.0,
                     amplitude_multiplier=1.0,
                     reference_mz=922.098,
+                    window_scan_size=70,
                 )
 
     def test_main_processes_amplitude_multiplier(self):
@@ -148,6 +150,7 @@ class TestCli(unittest.TestCase):
                     amplitude_percentile=99.0,
                     amplitude_multiplier=1.5,
                     reference_mz=922.098,
+                    window_scan_size=70,
                 )
 
     def test_main_processes_custom_reference_mz(self):
@@ -187,6 +190,7 @@ class TestCli(unittest.TestCase):
                     amplitude_percentile=75.0,
                     amplitude_multiplier=1.0,
                     reference_mz=121.050873,
+                    window_scan_size=70,
                 )
 
 

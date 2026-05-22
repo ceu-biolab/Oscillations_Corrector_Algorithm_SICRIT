@@ -24,6 +24,13 @@ def _mz_argument(value):
     return mz
 
 
+def _positive_int_argument(value):
+    int_value = int(value)
+    if int_value <= 0:
+        raise argparse.ArgumentTypeError("value must be greater than 0.")
+    return int_value
+
+
 def main():
     from sicritfix.processing.processor import process_file
     parser = argparse.ArgumentParser(
@@ -57,6 +64,16 @@ def main():
         type=_mz_argument,
         default=922.098,
         help="Reference m/z used to estimate the oscillation frequency and phase."
+    )
+
+    parser.add_argument(
+        "--window_scan_size",
+        type=_positive_int_argument,
+        default=70,
+        help=(
+            "Number of scans in each local FFT window used to estimate reference "
+            "local frequencies and phase (default: 70)."
+        ),
     )
 
     parser.add_argument(
@@ -207,6 +224,7 @@ def main():
                     print(f"  Amplitude method: {method}")
                 print(f"  Amplitude multiplier: {args.amplitude_multiplier:g}")
                 print(f"  Reference m/z: {args.reference_mz:g}")
+                print(f"  Window scan size: {args.window_scan_size}")
 
             file_corrected = process_file(
                 file_path=file_path,
@@ -219,6 +237,7 @@ def main():
                 amplitude_percentile=args.amplitude_percentile,
                 amplitude_multiplier=args.amplitude_multiplier,
                 reference_mz=args.reference_mz,
+                window_scan_size=args.window_scan_size,
             )
 
             if file_corrected:

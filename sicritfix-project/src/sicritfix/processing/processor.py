@@ -269,6 +269,7 @@ def process_file(
     amplitude_percentile=75,
     amplitude_multiplier=1.0,
     reference_mz=922.098,
+    window_scan_size=70,
 ):
     """
    Main pipeline for detecting and correcting oscillatory artifacts in an MS data file.
@@ -350,6 +351,7 @@ def process_file(
         mz_array,
         intensity_array,
         rt_window=rt_window,
+        window_scan_size=window_scan_size,
         mz_ref=reference_mz,
         mz_window=0.1,
     )

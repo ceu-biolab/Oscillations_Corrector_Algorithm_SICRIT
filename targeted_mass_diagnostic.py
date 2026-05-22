@@ -38,10 +38,10 @@ TARGET_MASSES = {
     "Gly-Leu": 189.12392,
     "Methionine sulfone": 182.04871,
     "Another 121.050873": 121.050873,
-    "Another 922.09798": 922.09798,
+    "Another 922.009798": 922.009798,
 }
 
-PHASE_SOURCE_MZ = 922.09798
+PHASE_SOURCE_MZ = 922.009798
 
 METHODS = [
     "q75",
