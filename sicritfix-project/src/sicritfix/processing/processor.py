@@ -50,14 +50,6 @@ from sicritfix.processing.corrector import correct_oscillations
 from sicritfix.io.io import load_file
 from sicritfix.utils.frequency_analyzer import obtain_freq_from_signal
 from sicritfix.utils.intensity_analyzer import build_xic
-from sicritfix.validation.validator import (
-    plot_all,
-    plot_original_and_corrected,
-    plot_original_and_modulated,
-    plot_modulated_signal,
-    plot_residual_signal,
-    plot_detected_mzs,
-)
 
 
 def detect_oscillating_mzs(rt_array, mz_array, intensity_array, mz_window=0.1, rt_window=5, min_occurrences=10, power_threshold=0.15):
@@ -357,8 +349,6 @@ def process_file(
             
         #2.2 Detect mzs to correct
     binned_mzs, oscillating_mzs, time_detect_oscillating_mzs=detect_oscillating_mzs(rts, mz_array, intensity_array, mz_window, rt_window)
-    if plot:
-        plot_detected_mzs(binned_mzs, oscillating_mzs, mz_window=mz_window)
     
             
     if not oscillating_mzs:
@@ -397,11 +387,6 @@ def process_file(
         modulated_signals[target_mz] = modulated_signal
         residual_signals[target_mz] = residual_signal
                 
-        if plot:
-            plot_all(rts, target_mz, xic, modulated_signal, residual_signal)
-            
-            
-            
     # 3. Apply changes (corrections) to spectra
     corrected_map, time_correct_spectra=correct_spectra(
         input_map,
