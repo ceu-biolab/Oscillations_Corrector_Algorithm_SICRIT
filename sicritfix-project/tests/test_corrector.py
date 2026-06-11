@@ -103,6 +103,59 @@ class TestCorrector(unittest.TestCase):
 
         np.testing.assert_allclose(modulated_signal_scaled, 2.0 * modulated_signal_base, rtol=1e-4, atol=1e-4)
 
+    def test_correct_oscillations_ignores_ramp_before_analysis_start(self):
+        rt_array = np.linspace(0, 40, 400)
+        mz_array = [np.array([100.0, 200.0]) for _ in range(400)]
+        phase_ref = 2 * np.pi * 0.2 * rt_array
+        intensity_array = [np.array([0.0, 10.0 + 5 * np.sin(phase_ref[i])]) for i in range(400)]
+        local_freqs_ref = np.full_like(rt_array, 0.2)
+
+        analysis_start_idx = 50
+        _, modulated_signal, residual_signal = correct_oscillations(
+            rt_array,
+            mz_array,
+            intensity_array,
+            phase_ref,
+            local_freqs_ref,
+            target_mz=200.0,
+            rt_window=0.01,
+            amplitude_method="q90",
+            analysis_start_idx=analysis_start_idx,
+        )
+
+        np.testing.assert_allclose(modulated_signal[:analysis_start_idx], 0.0, atol=1e-12)
+        self.assertGreater(np.max(np.abs(modulated_signal[analysis_start_idx:])), 0.0)
+        xic_before_start = np.array([values[1] for values in intensity_array[:analysis_start_idx]])
+        np.testing.assert_allclose(residual_signal[:analysis_start_idx], xic_before_start, rtol=1e-6)
+
+    def test_correct_oscillations_ignores_ramp_after_analysis_end(self):
+        rt_array = np.linspace(0, 40, 400)
+        mz_array = [np.array([100.0, 200.0]) for _ in range(400)]
+        phase_ref = 2 * np.pi * 0.2 * rt_array
+        intensity_array = [np.array([0.0, 10.0 + 5 * np.sin(phase_ref[i])]) for i in range(400)]
+        local_freqs_ref = np.full_like(rt_array, 0.2)
+
+        analysis_start_idx = 50
+        analysis_end_idx = 350
+        _, modulated_signal, residual_signal = correct_oscillations(
+            rt_array,
+            mz_array,
+            intensity_array,
+            phase_ref,
+            local_freqs_ref,
+            target_mz=200.0,
+            rt_window=0.01,
+            amplitude_method="q90",
+            analysis_start_idx=analysis_start_idx,
+            analysis_end_idx=analysis_end_idx,
+        )
+
+        np.testing.assert_allclose(modulated_signal[:analysis_start_idx], 0.0, atol=1e-12)
+        np.testing.assert_allclose(modulated_signal[analysis_end_idx:], 0.0, atol=1e-12)
+        self.assertGreater(np.max(np.abs(modulated_signal[analysis_start_idx:analysis_end_idx])), 0.0)
+        xic_after_end = np.array([values[1] for values in intensity_array[analysis_end_idx:]])
+        np.testing.assert_allclose(residual_signal[analysis_end_idx:], xic_after_end, rtol=1e-6)
+
     def test_correct_oscillations_fits_phase_offset_per_mz(self):
         rt_array = np.linspace(0, 40, 400)
         mz_array = [np.array([100.0, 200.0]) for _ in range(400)]

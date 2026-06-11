@@ -17,10 +17,24 @@ def _multiplier_argument(value):
     return multiplier
 
 
+def _nonnegative_float_argument(value):
+    float_value = float(value)
+    if float_value < 0:
+        raise argparse.ArgumentTypeError("value must be greater than or equal to 0.")
+    return float_value
+
+
+def _positive_float_argument(value):
+    float_value = float(value)
+    if float_value <= 0:
+        raise argparse.ArgumentTypeError("value must be greater than 0.")
+    return float_value
+
+
 def _mz_argument(value):
     mz = float(value)
     if mz <= 0:
-        raise argparse.ArgumentTypeError("--reference_mz must be greater than 0.")
+        raise argparse.ArgumentTypeError("reference mass must be greater than 0.")
     return mz
 
 
@@ -60,10 +74,27 @@ def main():
     )
 
     parser.add_argument(
+        "--main_reference_mass",
+        type=_mz_argument,
+        default=None,
+        help="Main reference m/z used to estimate the oscillation frequency and phase.",
+    )
+
+    parser.add_argument(
+        "--secondary_reference_mass",
+        type=_mz_argument,
+        default=None,
+        help=(
+            "Optional secondary reference m/z used in low-quality main-reference "
+            "regions."
+        ),
+    )
+
+    parser.add_argument(
         "--reference_mz",
         type=_mz_argument,
-        default=922.098,
-        help="Reference m/z used to estimate the oscillation frequency and phase."
+        default=None,
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -74,6 +105,47 @@ def main():
             "Number of scans in each local FFT window used to estimate reference "
             "local frequencies and phase (default: 70)."
         ),
+    )
+
+    parser.add_argument(
+        "--ignore_until_intensity",
+        type=_nonnegative_float_argument,
+        default=0.0,
+        help=(
+            "Ignore reference-mass ramp regions before the first stable signal and "
+            "after the final stable signal. Use 0 to disable; for T22POOL04 try 5000000."
+        ),
+    )
+
+    parser.add_argument(
+        "--ignore_consecutive_scans",
+        type=_positive_int_argument,
+        default=1,
+        help=(
+            "Number of consecutive scans above --ignore_until_intensity required "
+            "before correction starts."
+        ),
+    )
+
+    parser.add_argument(
+        "--quality_window_minutes",
+        type=_positive_float_argument,
+        default=4.0,
+        help="Window length in minutes for main-reference phase quality scoring.",
+    )
+
+    parser.add_argument(
+        "--quality_step_minutes",
+        type=_positive_float_argument,
+        default=2.0,
+        help="Step size in minutes for phase quality scoring.",
+    )
+
+    parser.add_argument(
+        "--quality_corr_threshold",
+        type=float,
+        default=0.5,
+        help="Correlation threshold below which the main reference is considered low quality.",
     )
 
     parser.add_argument(
@@ -169,6 +241,10 @@ def main():
     if args.plot:
         print(" Plotting is ENABLED")
 
+    main_reference_mass = args.main_reference_mass
+    if main_reference_mass is None:
+        main_reference_mass = args.reference_mz if args.reference_mz is not None else 922.098
+
     if args.amplitude_method == "all":
         methods_to_run = ["q75", "q90", "global_trimmed_detrended", "local_robust_detrended"]
     else:
@@ -223,8 +299,15 @@ def main():
                 else:
                     print(f"  Amplitude method: {method}")
                 print(f"  Amplitude multiplier: {args.amplitude_multiplier:g}")
-                print(f"  Reference m/z: {args.reference_mz:g}")
+                print(f"  Main reference m/z: {main_reference_mass:g}")
+                if args.secondary_reference_mass is not None:
+                    print(f"  Secondary reference m/z: {args.secondary_reference_mass:g}")
                 print(f"  Window scan size: {args.window_scan_size}")
+                print(f"  Ignore until intensity: {args.ignore_until_intensity:g}")
+                print(f"  Ignore consecutive scans: {args.ignore_consecutive_scans}")
+                print(f"  Quality window: {args.quality_window_minutes:g} min")
+                print(f"  Quality step: {args.quality_step_minutes:g} min")
+                print(f"  Quality correlation threshold: {args.quality_corr_threshold:g}")
 
             file_corrected = process_file(
                 file_path=file_path,
@@ -236,8 +319,14 @@ def main():
                 amplitude_method=method,
                 amplitude_percentile=args.amplitude_percentile,
                 amplitude_multiplier=args.amplitude_multiplier,
-                reference_mz=args.reference_mz,
+                main_reference_mass=main_reference_mass,
+                secondary_reference_mass=args.secondary_reference_mass,
                 window_scan_size=args.window_scan_size,
+                ignore_until_intensity=args.ignore_until_intensity,
+                ignore_consecutive_scans=args.ignore_consecutive_scans,
+                quality_window_minutes=args.quality_window_minutes,
+                quality_step_minutes=args.quality_step_minutes,
+                quality_corr_threshold=args.quality_corr_threshold,
             )
 
             if file_corrected:

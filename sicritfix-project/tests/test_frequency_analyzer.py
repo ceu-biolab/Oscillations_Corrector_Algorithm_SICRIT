@@ -26,6 +26,8 @@ from sicritfix.utils.frequency_analyzer import (
     calculate_freq,
     local_frequencies_with_fft,
     apply_polynomial_regression,
+    find_stable_signal_start,
+    find_stable_signal_range,
 )
 
 class TestFrequencyAnalyzer(unittest.TestCase):
@@ -58,6 +60,17 @@ class TestFrequencyAnalyzer(unittest.TestCase):
         # Assert increasing phase trend
         self.assertEqual(phase.shape, rts.shape)
         self.assertTrue(np.all(np.diff(phase) >= 0))
+
+    def test_find_stable_signal_start_requires_consecutive_scans(self):
+        xic = np.array([0, 10, 0, 10, 10, 10], dtype=float)
+        start = find_stable_signal_start(xic, intensity_threshold=5, min_consecutive_scans=3)
+        self.assertEqual(start, 3)
+
+    def test_find_stable_signal_range_ignores_start_and_end_ramps(self):
+        xic = np.array([0, 0, 10, 10, 10, 3, 10, 10, 0, 0], dtype=float)
+        start, end = find_stable_signal_range(xic, intensity_threshold=5, min_consecutive_scans=2)
+        self.assertEqual(start, 2)
+        self.assertEqual(end, 8)
 
 if __name__ == "__main__":
     unittest.main()
