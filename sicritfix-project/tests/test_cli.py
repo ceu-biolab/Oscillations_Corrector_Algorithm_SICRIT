@@ -36,7 +36,14 @@ class TestCli(unittest.TestCase):
                     amplitude_method="local_robust_detrended",
                     amplitude_percentile=75.0,
                     amplitude_multiplier=1.0,
-                    reference_mz=922.098,
+                    main_reference_mass=922.098,
+                    secondary_reference_mass=None,
+                    window_scan_size=70,
+                    ignore_until_intensity=0.0,
+                    ignore_consecutive_scans=1,
+                    quality_window_minutes=4.0,
+                    quality_step_minutes=2.0,
+                    quality_corr_threshold=0.5,
                 )
 
     def test_main_processes_all_amplitude_methods(self):
@@ -104,7 +111,14 @@ class TestCli(unittest.TestCase):
                     amplitude_method="percentile",
                     amplitude_percentile=99.0,
                     amplitude_multiplier=1.0,
-                    reference_mz=922.098,
+                    main_reference_mass=922.098,
+                    secondary_reference_mass=None,
+                    window_scan_size=70,
+                    ignore_until_intensity=0.0,
+                    ignore_consecutive_scans=1,
+                    quality_window_minutes=4.0,
+                    quality_step_minutes=2.0,
+                    quality_corr_threshold=0.5,
                 )
 
     def test_main_processes_amplitude_multiplier(self):
@@ -147,7 +161,14 @@ class TestCli(unittest.TestCase):
                     amplitude_method="percentile",
                     amplitude_percentile=99.0,
                     amplitude_multiplier=1.5,
-                    reference_mz=922.098,
+                    main_reference_mass=922.098,
+                    secondary_reference_mass=None,
+                    window_scan_size=70,
+                    ignore_until_intensity=0.0,
+                    ignore_consecutive_scans=1,
+                    quality_window_minutes=4.0,
+                    quality_step_minutes=2.0,
+                    quality_corr_threshold=0.5,
                 )
 
     def test_main_processes_custom_reference_mz(self):
@@ -186,7 +207,68 @@ class TestCli(unittest.TestCase):
                     amplitude_method="local_robust_detrended",
                     amplitude_percentile=75.0,
                     amplitude_multiplier=1.0,
-                    reference_mz=121.050873,
+                    main_reference_mass=121.050873,
+                    secondary_reference_mass=None,
+                    window_scan_size=70,
+                    ignore_until_intensity=0.0,
+                    ignore_consecutive_scans=1,
+                    quality_window_minutes=4.0,
+                    quality_step_minutes=2.0,
+                    quality_corr_threshold=0.5,
+                )
+
+    def test_main_processes_dual_reference_masses(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            input_file = os.path.join(tmp_dir, "input.mzML")
+            with open(input_file, "w", encoding="utf-8"):
+                pass
+
+            fake_processor = types.SimpleNamespace(process_file=mock.MagicMock(return_value=True))
+            with mock.patch.dict(
+                sys.modules,
+                {"pyopenms": mock.MagicMock(), "sicritfix.processing.processor": fake_processor},
+            ):
+                cli = importlib.import_module("sicritfix.cli")
+
+                with mock.patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "sicritfix",
+                        "--input",
+                        input_file,
+                        "--main_reference_mass",
+                        "922.009798",
+                        "--secondary_reference_mass",
+                        "121.050873",
+                        "--quality_window_minutes",
+                        "4",
+                        "--quality_step_minutes",
+                        "2",
+                        "--quality_corr_threshold",
+                        "0.5",
+                    ],
+                ):
+                    cli.main()
+
+                fake_processor.process_file.assert_called_once_with(
+                    file_path=input_file,
+                    save_as=os.path.join(tmp_dir, "input_corrected.mzML"),
+                    plot=False,
+                    verbose=False,
+                    mz_window=0.1,
+                    rt_window=5,
+                    amplitude_method="local_robust_detrended",
+                    amplitude_percentile=75.0,
+                    amplitude_multiplier=1.0,
+                    main_reference_mass=922.009798,
+                    secondary_reference_mass=121.050873,
+                    window_scan_size=70,
+                    ignore_until_intensity=0.0,
+                    ignore_consecutive_scans=1,
+                    quality_window_minutes=4.0,
+                    quality_step_minutes=2.0,
+                    quality_corr_threshold=0.5,
                 )
 
 

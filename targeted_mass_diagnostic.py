@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 import numpy as np
 
 import sys
@@ -24,10 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent / "sicritfix-project" / "src"))
 
 from sicritfix.io.io import load_file
 from sicritfix.processing.corrector import correct_oscillations
-from sicritfix.utils.frequency_analyzer import (
-    apply_polynomial_regression,
-    local_frequencies_with_fft,
-)
+from sicritfix.utils.frequency_analyzer import obtain_freq_from_signal
 from sicritfix.utils.intensity_analyzer import build_xic, get_amplitude
 
 
@@ -37,10 +35,12 @@ TARGET_MASSES = {
     "Gly-Leu": 189.12392,
     "Methionine sulfone": 182.04871,
     "Another 121.050873": 121.050873,
-    "Another 922.09798": 922.09798,
+    "Another 922.009798": 922.009798,
 }
 
-PHASE_SOURCE_MZ = 922.09798
+MAIN_REFERENCE_MZ = 922.009798
+SECONDARY_REFERENCE_MZ = 121.050873
+PHASE_SOURCE_MZ = MAIN_REFERENCE_MZ
 
 METHODS = [
     "q75",
@@ -69,24 +69,39 @@ def load_arrays(file_path: str):
     return exp, rt_array, mz_array, intensity_array
 
 
-def get_phase_reference(rt_array, mz_array, intensity_array, phase_source_mz, rt_window, mz_window):
+def get_phase_reference(
+    rt_array,
+    mz_array,
+    intensity_array,
+    main_reference_mz,
+    secondary_reference_mz,
+    rt_window,
+    mz_window,
+    window_scan_size,
+    ignore_until_intensity,
+    ignore_consecutive_scans,
+    quality_window_minutes,
+    quality_step_minutes,
+    quality_corr_threshold,
+):
     sampling_interval = float(np.mean(np.diff(rt_array)))
-    ref_xic = build_xic(
+    local_freqs_ref, phase_ref, metadata = obtain_freq_from_signal(
+        rt_array,
         mz_array,
         intensity_array,
-        rt_array,
-        target_mz=phase_source_mz,
         rt_window=rt_window,
+        window_scan_size=window_scan_size,
+        mz_ref=main_reference_mz,
+        secondary_mz_ref=secondary_reference_mz,
         mz_window=mz_window,
+        ignore_until_intensity=ignore_until_intensity,
+        ignore_consecutive_scans=ignore_consecutive_scans,
+        quality_window_minutes=quality_window_minutes,
+        quality_step_minutes=quality_step_minutes,
+        quality_corr_threshold=quality_corr_threshold,
+        return_metadata=True,
     )
-    rt_freqs, local_freqs_ref = local_frequencies_with_fft(
-        ref_xic,
-        rt_array,
-        window_scan_size=70,
-        sampling_interval=sampling_interval,
-    )
-    phase_ref = apply_polynomial_regression(rt_array, rt_freqs, local_freqs_ref)
-    return local_freqs_ref, phase_ref, sampling_interval
+    return local_freqs_ref, phase_ref, sampling_interval, metadata
 
 
 def sanitize_name(name: str) -> str:
@@ -99,26 +114,51 @@ def run_targeted_analysis(
     mz_window: float = 0.1,
     rt_window: float = 5.0,
     amplitude_multiplier: float = 1.0,
+    window_scan_size: int = 70,
+    main_reference_mz: float = MAIN_REFERENCE_MZ,
+    secondary_reference_mz: float | None = SECONDARY_REFERENCE_MZ,
+    ignore_until_intensity: float = 0.0,
+    ignore_consecutive_scans: int = 1,
+    quality_window_minutes: float = 4.0,
+    quality_step_minutes: float = 2.0,
+    quality_corr_threshold: float = 0.5,
 ):
     outdir = Path(output_dir)
     outdir.mkdir(parents=True, exist_ok=True)
 
     _, rt_array, mz_array, intensity_array = load_arrays(file_path)
-    local_freqs_ref, phase_ref, sampling_interval = get_phase_reference(
+    local_freqs_ref, phase_ref, sampling_interval, reference_metadata = get_phase_reference(
         rt_array,
         mz_array,
         intensity_array,
-        phase_source_mz=PHASE_SOURCE_MZ,
+        main_reference_mz=main_reference_mz,
+        secondary_reference_mz=secondary_reference_mz,
         rt_window=rt_window,
         mz_window=mz_window,
+        window_scan_size=window_scan_size,
+        ignore_until_intensity=ignore_until_intensity,
+        ignore_consecutive_scans=ignore_consecutive_scans,
+        quality_window_minutes=quality_window_minutes,
+        quality_step_minutes=quality_step_minutes,
+        quality_corr_threshold=quality_corr_threshold,
     )
+    analysis_start_idx = int(reference_metadata.get("stable_start_idx", 0))
+    analysis_end_idx = int(reference_metadata.get("stable_end_idx", len(rt_array)))
+    rt_minutes = rt_array / 60.0
+    major_tick_minutes = 100.0 / 60.0
 
     summary = {
         "file": file_path,
-        "phase_source_mz": PHASE_SOURCE_MZ,
+        "main_reference_mz": main_reference_mz,
+        "secondary_reference_mz": secondary_reference_mz,
+        "window_scan_size": window_scan_size,
         "mz_window": mz_window,
         "rt_window": rt_window,
         "amplitude_multiplier": amplitude_multiplier,
+        "quality_window_minutes": quality_window_minutes,
+        "quality_step_minutes": quality_step_minutes,
+        "quality_corr_threshold": quality_corr_threshold,
+        "reference_metadata": reference_metadata,
         "targets": {},
     }
 
@@ -148,10 +188,13 @@ def run_targeted_analysis(
                 mz_tol=mz_window,
                 amplitude_method=method,
                 amplitude_multiplier=amplitude_multiplier,
+                analysis_start_idx=analysis_start_idx,
+                analysis_end_idx=analysis_end_idx,
             )
+            stable_xic = xic[analysis_start_idx:analysis_end_idx]
             amplitude = float(
                 get_amplitude(
-                    xic,
+                    stable_xic,
                     local_freqs_ref,
                     sampling_interval,
                     method=method,
@@ -177,16 +220,16 @@ def run_targeted_analysis(
             amplitudes.append(amplitude)
             labels.append(method)
 
-        fig1, axes1 = plt.subplots(len(METHODS), 1, figsize=(16, 12), sharex=True)
+        fig1, axes1 = plt.subplots(len(METHODS), 1, figsize=(16, 14), sharex=True)
         fig1.suptitle(
             f"{target_name} ({target_mz:.5f}) - Original, Subtract, and Corrected Signals",
             fontsize=14,
         )
         for ax, method in zip(axes1, METHODS):
             result = method_results[method]
-            ax.plot(rt_array, original_xic, color="black", linewidth=1.0, label="Original signal")
+            ax.plot(rt_minutes, original_xic, color="black", linewidth=1.0, label="Original signal")
             ax.plot(
-                rt_array,
+                rt_minutes,
                 result["modulated_signal"],
                 color=METHOD_COLORS[method],
                 linewidth=1.0,
@@ -194,7 +237,7 @@ def run_targeted_analysis(
                 label=f"Signal to subtract ({method})",
             )
             ax.plot(
-                rt_array,
+                rt_minutes,
                 result["residual_signal"],
                 color=METHOD_COLORS[method],
                 linewidth=1.0,
@@ -208,12 +251,15 @@ def run_targeted_analysis(
                 f"STD reduction={result['std_reduction_pct']:.2f}%"
             )
             ax.grid(True, alpha=0.2)
+            ax.xaxis.set_major_locator(MultipleLocator(major_tick_minutes))
             ax.legend(loc="upper right", fontsize=8)
-        axes1[-1].set_xlabel("Retention time (s)")
-        fig1.tight_layout()
-        fig1.subplots_adjust(top=0.96)
-        fig1.savefig(outdir / f"{sanitize_name(target_name)}_01_combined_signals.png", dpi=180, bbox_inches="tight")
+        axes1[-1].set_xlabel("Retention time (min; major ticks every 100 s)")
+        fig1.tight_layout(rect=[0, 0, 1, 0.94], h_pad=1.4)
+        fig1.subplots_adjust(top=0.91, hspace=0.45)
+        combined_plot_path = outdir / f"{sanitize_name(target_name)}_01_combined_signals.png"
+        fig1.savefig(combined_plot_path, dpi=180, bbox_inches="tight")
         plt.close(fig1)
+        print(f"Saved combined signals plot to: {combined_plot_path}")
 
         fig3, ax3 = plt.subplots(figsize=(11, 6))
         x = np.arange(len(labels), dtype=float)
@@ -232,8 +278,10 @@ def run_targeted_analysis(
                 fontsize=8,
             )
         fig3.tight_layout()
-        fig3.savefig(outdir / f"{sanitize_name(target_name)}_02_amplitudes.png", dpi=180, bbox_inches="tight")
+        amplitude_plot_path = outdir / f"{sanitize_name(target_name)}_02_amplitudes.png"
+        fig3.savefig(amplitude_plot_path, dpi=180, bbox_inches="tight")
         plt.close(fig3)
+        print(f"Saved amplitude plot to: {amplitude_plot_path}")
 
         summary["targets"][target_name] = {
             "target_mz": target_mz,
@@ -256,11 +304,12 @@ if __name__ == "__main__":
     os.environ.setdefault("MPLBACKEND", "Agg")
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/mpl")
 
-    demo_file = Path(__file__).parent / "demo_data" / "MSCONVERT_CTRL_103_01_c_afterreboot_original.mzML"
+    demo_file = Path(__file__).parent / "demo_data" / "T22POOL04_02_06_neg_1.mzml"
     run_targeted_analysis(
         file_path=str(demo_file),
-        output_dir="diagnostic_plots/targeted_mass_signal_analysis_2026_05_19",
+        output_dir="diagnostic_plots/T22POOL04_02_06_neg_1_targeted_mass_signal_analysis_dual_reference",
         mz_window=0.1,
         rt_window=5.0,
         amplitude_multiplier=1.0,
+        window_scan_size=70,
     )

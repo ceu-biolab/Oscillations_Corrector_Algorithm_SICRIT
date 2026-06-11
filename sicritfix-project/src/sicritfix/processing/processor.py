@@ -261,6 +261,14 @@ def process_file(
     amplitude_percentile=75,
     amplitude_multiplier=1.0,
     reference_mz=922.098,
+    main_reference_mass=None,
+    secondary_reference_mass=None,
+    window_scan_size=70,
+    ignore_until_intensity=0.0,
+    ignore_consecutive_scans=1,
+    quality_window_minutes=4.0,
+    quality_step_minutes=2.0,
+    quality_corr_threshold=0.5,
 ):
     """
    Main pipeline for detecting and correcting oscillatory artifacts in an MS data file.
@@ -311,6 +319,8 @@ def process_file(
     
     start_time=time.time()
     input_map=load_file(file_path)
+    if main_reference_mass is None:
+        main_reference_mass = reference_mz
 
         
     # 1. Load MS data from the original file (rts, mzs, and intesity values)
@@ -337,14 +347,37 @@ def process_file(
     # 2. Oscillations' correction
             
         #2.1 Extract freq from the chosen reference m/z using 0.1 Da tolerance.
-    local_freqs_ref, phase_ref = obtain_freq_from_signal(
+    local_freqs_ref, phase_ref, reference_metadata = obtain_freq_from_signal(
         rts,
         mz_array,
         intensity_array,
         rt_window=rt_window,
-        mz_ref=reference_mz,
+        window_scan_size=window_scan_size,
+        mz_ref=main_reference_mass,
+        secondary_mz_ref=secondary_reference_mass,
         mz_window=0.1,
+        ignore_until_intensity=ignore_until_intensity,
+        ignore_consecutive_scans=ignore_consecutive_scans,
+        quality_window_minutes=quality_window_minutes,
+        quality_step_minutes=quality_step_minutes,
+        quality_corr_threshold=quality_corr_threshold,
+        return_metadata=True,
     )
+    analysis_start_idx = reference_metadata["stable_start_idx"]
+    analysis_end_idx = reference_metadata["stable_end_idx"]
+    if verbose and (analysis_start_idx > 0 or analysis_end_idx < len(rts)):
+        print(
+            " Correcting stable reference region "
+            f"scan {analysis_start_idx} to {analysis_end_idx - 1} "
+            f"(RT={reference_metadata['stable_start_rt']:.3f} to "
+            f"{reference_metadata['stable_end_rt']:.3f} s)"
+        )
+        if secondary_reference_mass is not None:
+            print(
+                " Dual-reference phase enabled with "
+                f"main m/z {main_reference_mass:g}, "
+                f"secondary m/z {secondary_reference_mass:g}"
+            )
     
             
         #2.2 Detect mzs to correct
@@ -381,6 +414,8 @@ def process_file(
             amplitude_method=amplitude_method,
             amplitude_percentile=amplitude_percentile,
             amplitude_multiplier=amplitude_multiplier,
+            analysis_start_idx=analysis_start_idx,
+            analysis_end_idx=analysis_end_idx,
         )
                 
         xic_signals[target_mz] = xic

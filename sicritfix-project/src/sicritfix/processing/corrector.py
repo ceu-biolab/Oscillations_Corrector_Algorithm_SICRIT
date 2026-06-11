@@ -140,6 +140,8 @@ def correct_oscillations(
     amplitude_method="local_robust_detrended",
     amplitude_percentile=75,
     amplitude_multiplier=1.0,
+    analysis_start_idx=0,
+    analysis_end_idx=None,
 ):
     """
     Corrects oscillations in an extracted ion chromatogram (XIC) by subtracting a
@@ -201,11 +203,17 @@ def correct_oscillations(
 
     #2. Frequency with polynomial regression
     sampling_interval = np.mean(np.diff(rt_array))
+    analysis_start_idx = int(max(0, min(analysis_start_idx, len(xic))))
+    if analysis_end_idx is None:
+        analysis_end_idx = len(xic)
+    analysis_end_idx = int(max(analysis_start_idx, min(analysis_end_idx, len(xic))))
+    stable_xic = xic[analysis_start_idx:analysis_end_idx]
+    stable_phase_ref = np.asarray(phase_ref, dtype=float)[analysis_start_idx:analysis_end_idx]
     
     
     # 3. Amplitude at each m/z
     amplitude = get_amplitude(
-        xic,
+        stable_xic,
         local_freqs_ref,
         sampling_interval,
         method=amplitude_method,
@@ -215,8 +223,13 @@ def correct_oscillations(
     
     
     # 4. Fit a per-m/z phase offset while keeping the chosen amplitude strategy.
-    phase_offset = fit_phase_offset(xic, phase_ref, local_freqs_ref, sampling_interval)
-    modulated_signal = generate_modulated_signal(amplitude, phase_ref + phase_offset)
+    phase_offset = fit_phase_offset(stable_xic, stable_phase_ref, local_freqs_ref, sampling_interval)
+    modulated_signal = np.zeros_like(xic, dtype=float)
+    if stable_phase_ref.size:
+        modulated_signal[analysis_start_idx:analysis_end_idx] = generate_modulated_signal(
+            amplitude,
+            stable_phase_ref + phase_offset,
+        )
     
     # 5. Computation of the residual/final signal
     residual_signal = xic - modulated_signal
