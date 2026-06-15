@@ -1,5 +1,5 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.8.0"]
 build-backend = "poetry.core.masonry.api"
 
 [project]
@@ -8,14 +8,14 @@ version = "0.0.10"
 description = "Python package to detect and correct oscillatory artifacts in mass spectrometry mzML data."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
-dynamic = ["classifiers"]
-license = "GPL-3.0-only"
+license = { text = "GPL-3.0-only" }
 
 authors = [
     { name = "Maite Gómez del Rio Vinuesa", email = "maite.gomezriovinuesa@gmail.com" },
     { name = "Alberto Gil de la Fuente", email = "alberto.gilf@gmail.com" },
     { name = "Víctor González Ruíz", email = "vgonzalezruiz@gmail.com" }
 ]
+
 maintainers = [
     { name = "Maite Gómez del Rio Vinuesa", email = "maite.gomezriovinuesa@gmail.com" },
     { name = "Alberto Gil de la Fuente", email = "alberto.gilf@gmail.com" }
@@ -30,23 +30,6 @@ keywords = [
     "oscillations"
 ]
 
-dependencies = [
-    "numpy>=2.0,<3.0",
-    "scipy>=1.13",
-    "pandas",
-    "pyopenms"
-]
-
-scripts = { sicritfix = "sicritfix.cli:main" }
-
-
-[project.urls]
-Homepage = "https://github.com/ceu-biolab/Oscillations_Corrector_Algorithm_SICRIT"
-Repository = "https://github.com/ceu-biolab/Oscillations_Corrector_Algorithm_SICRIT"
-Documentation = "https://github.com/ceu-biolab/Oscillations_Corrector_Algorithm_SICRIT#readme"
-
-
-[tool.poetry]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -55,18 +38,25 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics"
 ]
 
+dependencies = [
+    "numpy>=2.0,<3.0",
+    "scipy>=1.13",
+    "pandas",
+    "pyopenms"
+]
+
+[project.scripts]
+sicritfix = "sicritfix.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ceu-biolab/Oscillations_Corrector_Algorithm_SICRIT"
+Repository = "https://github.com/ceu-biolab/Oscillations_Corrector_Algorithm_SICRIT"
+Documentation = "https://github.com/ceu-biolab/Oscillations_Corrector_Algorithm_SICRIT#readme"
+
+[tool.poetry]
 packages = [
     { include = "sicritfix", from = "sicritfix-project/src" }
 ]
 
-[dependencies]
-python = "^3.11"
-numpy = ">=2.0,<3.0"
-scipy = ">=1.13"
-pandas = "*"
-pyopenms = "*"
-
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0"
-
-
